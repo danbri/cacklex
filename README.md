@@ -2,8 +2,8 @@
 
 Two projects from one working session (19 September 2026), kept together
 here while they are prepared as contributions to
-[danbri/factoidal](https://github.com/danbri/factoidal). The repository name
-is `cracklex`; the project codename is CackleX.
+[danbri/factoidal](https://github.com/danbri/factoidal). The repository is
+[danbri/cacklex](https://github.com/danbri/cacklex); the project codename is CackleX.
 
 | Directory | What it is | Build and test |
 | --- | --- | --- |
