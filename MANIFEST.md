@@ -32,3 +32,13 @@ Not verified against the real thing: Docker (CLI stand-in only) and WebMCP
 (mock of document.modelContext only).
 
 Build outputs and dependencies are excluded: .lake, node_modules, .cache.
+
+## Claude skills from Factoidal
+
+`.claude/skills` is a relative symlink to `../../danbri/factoidal/skills`, so
+Factoidal's skills (factoidal-lean-basics, lean4-proof-patterns,
+lean4-performance, build-and-test, github-coauthor-policy, ...) load in a
+Claude Code session opened on this repo. It resolves when Factoidal is
+cloned as a sibling: from the directory above this one,
+
+    git clone --depth 1 https://github.com/danbri/factoidal danbri/factoidal
