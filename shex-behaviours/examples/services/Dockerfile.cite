@@ -1,0 +1,4 @@
+# docker build -t example/cite:1 -f examples/services/Dockerfile.cite examples/services
+FROM node:22-alpine
+COPY cite-container.mjs /app/cite-container.mjs
+ENTRYPOINT ["node", "/app/cite-container.mjs"]

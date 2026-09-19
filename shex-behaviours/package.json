@@ -1,0 +1,32 @@
+{
+  "name": "shex-behaviours",
+  "version": "0.1.0",
+  "description": "Prototype: ShEx shapes as classes, shape-dispatched behaviours bound to AssemblyScript, wasm, REST, Docker, MCP and WebMCP",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./export": "./src/export.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "shexb-serve-mcp": "bin/serve-mcp.mjs"
+  },
+  "scripts": {
+    "build:examples": "node examples/build-wasm.mjs",
+    "demo": "node examples/demo.mjs",
+    "test": "node test/run.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@shexjs/neighborhood-rdfjs": "^1.0.0-alpha.33",
+    "@shexjs/parser": "^1.0.0-alpha.33",
+    "@shexjs/validator": "^1.0.0-alpha.33",
+    "assemblyscript": "^0.28.20",
+    "n3": "^2.7.12",
+    "zod": "^4.6.5"
+  }
+}

@@ -1,0 +1,104 @@
+# A small program: shapes are the classes, %b:def{ … %} attaches behaviours to them.
+# Every line is ShExC 2.1 plus EXTENDS/ABSTRACT; a plain ShEx processor can validate with it
+# and will skip the b: semantic actions.
+
+PREFIX b:      <https://example.org/shex-behaviours#>
+PREFIX ex:     <http://example.org/>
+PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+PREFIX schema: <http://schema.org/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+# Shared AssemblyScript, compiled together with every inline body below.
+# ShExC reserves the percent sign inside semantic actions, so modulo is written \%.
+%b:as{
+  function isbn13(s: string): bool {
+    let digits = 0, sum = 0;
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if (c == 45 || c == 32) continue;
+      if (c < 48 || c > 57) return false;
+      sum += (c - 48) * (digits \% 2 == 0 ? 1 : 3);
+      digits++;
+    }
+    return digits == 13 && sum \% 10 == 0;
+  }
+  function plusDays(date: string, days: i32): string {
+    const t = Date.fromString(date).getTime() + <i64>days * 86400000;
+    return new Date(t).toISOString().substring(0, 10);
+  }
+%}
+
+ABSTRACT <Agent> {
+  foaf:name xsd:string
+}
+%b:def{ label "A short display label." -> xsd:string
+        := as { return self.name; } %}
+
+<Person> EXTENDS @<Agent> {
+  a [foaf:Person] ;
+  foaf:age xsd:integer ? ;
+  foaf:knows @<Agent> *
+}
+%b:def{ label -> xsd:string
+        := as { return self.name + " (knows " + self.knows.length.toString() + ")"; } %}
+%b:def{ greet "Greets the person." { ex:greeting xsd:string } -> xsd:string
+        := as { return greeting + ", " + self.name + "!"; } %}
+%b:def{ older "The same person some years on. Returns a new object; the input graph is unchanged."
+        { ex:years xsd:integer MININCLUSIVE 0 } -> @<Person>
+        := as { for (let i = 0; i < self.age.length; i++) self.age[i] += years; return self; } %}
+%b:def{ contacts -> IRI AND @<Agent> *
+        := as { return self.knows; } %}
+%b:def{ contactLabels -> xsd:string *
+        := map knows label %}
+
+# Structural subclass: any Person that also has both measurements is a Measured.
+<Measured> EXTENDS @<Person> {
+  ex:massKg xsd:decimal ;
+  ex:heightM xsd:decimal
+}
+%b:def{ bmi -> xsd:decimal
+        := wasm <wasm/bmi.wasm> "bmi" (self.massKg, self.heightM) %}
+
+<Organization> EXTENDS @<Agent> {
+  a [foaf:Organization] ;
+  foaf:member @<Person> *
+}
+%b:def{ label -> xsd:string
+        := as { return self.name + " [" + self.member.length.toString() + " members]"; } %}
+
+<Book> {
+  a [schema:Book] ;
+  schema:name xsd:string ;
+  schema:isbn xsd:string %b:where{ isbn13(o) %} ;
+  schema:author @<Person> + // b:embed true ;
+  schema:numberOfPages xsd:integer ?
+}
+%b:def{ label -> xsd:string := as {
+          let names = "";
+          for (let i = 0; i < self.author.length; i++) names += (i ? ", " : "") + self.author[i].name;
+          return self.name + " by " + names;
+        } %}
+%b:def{ slug -> xsd:string
+        := wasm <wasm/slug.wasm> "slug" json %}
+%b:def{ enrich "Adds the page count from the catalogue service." -> @<Book>
+        := rest POST <enrich> %}
+%b:def{ cite { ex:style [ "plain" "apa" ] } -> xsd:string
+        := docker "example/cite:1" %}
+%b:def{ summarise { ex:maxWords xsd:integer ? } -> xsd:string
+        := mcp "library" "summarise" %}
+%b:def{ announce -> xsd:string
+        := webmcp "show_toast" %}
+%b:def{ enrichedLabel -> xsd:string
+        := pipe enrich label %}
+
+<Loan> {
+  ex:book @<Book> ;
+  ex:borrower @<Person> ;
+  ex:from xsd:date ;
+  ex:due xsd:date
+}
+%b:where{ self.from <= self.due %}
+%b:def{ overdue { ex:today xsd:date } -> xsd:boolean
+        := as { return today > self.due; } %}
+%b:def{ renew { ex:days xsd:int } -> @<Loan>
+        := as { self.due = plusDays(self.due, days); return self; } %}

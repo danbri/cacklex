@@ -1,0 +1,17 @@
+@prefix ex:     <http://example.org/> .
+@prefix foaf:   <http://xmlns.com/foaf/0.1/> .
+@prefix schema: <http://schema.org/> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+ex:alice a foaf:Person ; foaf:name "Alice" ; foaf:age 34 ; foaf:knows ex:bob, ex:acme ;
+  ex:massKg 62.5 ; ex:heightM 1.70 .
+ex:bob a foaf:Person ; foaf:name "Bob" ; foaf:knows ex:alice .
+ex:acme a foaf:Organization ; foaf:name "Acme" ; foaf:member ex:alice, ex:bob .
+
+ex:book1 a schema:Book ; schema:name "Shape Expressions in Practice" ;
+  schema:isbn "978-0-306-40615-7" ; schema:author ex:alice, ex:bob .
+ex:badbook a schema:Book ; schema:name "Wrong Check Digit" ;
+  schema:isbn "978-0-306-40615-8" ; schema:author ex:alice .
+
+ex:loan1 ex:book ex:book1 ; ex:borrower ex:bob ; ex:from "2026-09-01"^^xsd:date ; ex:due "2026-09-22"^^xsd:date .
+ex:badloan ex:book ex:book1 ; ex:borrower ex:bob ; ex:from "2026-09-10"^^xsd:date ; ex:due "2026-09-01"^^xsd:date .

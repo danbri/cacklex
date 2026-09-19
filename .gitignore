@@ -1,0 +1,4 @@
+# build outputs and dependencies
+.lake/
+node_modules/
+.cache/

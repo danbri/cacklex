@@ -1,0 +1,5 @@
+name = "ShapesCore"
+defaultTargets = ["ShapesCore"]
+
+[[lean_lib]]
+name = "ShapesCore"
