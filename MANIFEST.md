@@ -23,9 +23,9 @@ the axioms behind the main theorems. 107 theorems, about 2277 lines, no
 - js/                  draft FP JavaScript mirror of the common core, 11 tests
                        (`node --test` in that directory)
 
-## shex-behaviours/
+## labs/shex-behaviours/
 
-Node.js prototype of an OO/FP language whose programs are ShEx schemas, with
+Experiment, not aimed at Factoidal's formal tree. Node.js prototype of an OO/FP language whose programs are ShEx schemas, with
 behaviours bound to AssemblyScript, wasm, REST, Docker, MCP and WebMCP.
 `npm install`, `npm test` (26 tests), `npm run demo`. See SPEC.md and README.md.
 Not verified against the real thing: Docker (CLI stand-in only) and WebMCP

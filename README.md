@@ -9,7 +9,7 @@ here while they are prepared as contributions to
 | --- | --- | --- |
 | [`shapescore/`](shapescore/) | ShapesCore: a Lean 4 core for recursive shape languages (SHACL 1.2 and ShEx), following Ahmetaj et al., "Common Foundations for Recursive Shape Languages" (KR 2026). 107 theorems, no `sorry`, `partial`, `axiom` or `native_decide`. | `lake build`; `lake env lean Audit.lean` prints the axioms behind the main theorems |
 | [`shapescore/js/`](shapescore/js/) | Draft JavaScript mirror of the common core, for differential testing against the Lean definitions. | `node --test` |
-| [`shex-behaviours/`](shex-behaviours/) | Node.js prototype of an object-oriented and functional language whose programs are ShEx schemas. Behaviours are attached to shapes and bound to AssemblyScript, wasm, REST, Docker, MCP and WebMCP. | `npm install && npm test`; `npm run demo` |
+| [`labs/shex-behaviours/`](labs/shex-behaviours/) | Node.js prototype of an object-oriented and functional language whose programs are ShEx schemas. Behaviours are attached to shapes and bound to AssemblyScript, wasm, REST, Docker, MCP and WebMCP. | `npm install && npm test`; `npm run demo` |
 
 [`MANIFEST.md`](MANIFEST.md) lists every file. Build outputs (`.lake`,
 `node_modules`, `.cache`) are not committed.
@@ -21,7 +21,7 @@ here while they are prepared as contributions to
   Mathlib and no other Lean dependencies.
 - Node 20 or later for `shex-behaviours` and the JavaScript mirror.
 - Docker is optional. Without a daemon the Docker binding runs against the
-  CLI stand-in in `shex-behaviours/examples/services/fake-docker.mjs`.
+  CLI stand-in in `labs/shex-behaviours/examples/services/fake-docker.mjs`.
 
 ## Verification status
 
@@ -39,7 +39,7 @@ Checked on 19 September 2026 on a fresh Linux container:
 
 Not verified: the Docker binding against a real daemon, and WebMCP beyond
 a mock of `document.modelContext`. Both are stated in
-[`shex-behaviours/README.md`](shex-behaviours/README.md).
+[`labs/shex-behaviours/README.md`](labs/shex-behaviours/README.md).
 
 ## Relation to Factoidal
 
@@ -52,10 +52,11 @@ the gates each stage must pass in CI, is in
 two languages differ and what follows for the core is in
 [`shapescore/DESIGN-NOTES.md`](shapescore/DESIGN-NOTES.md).
 
+`labs/` holds experiments that are not aimed at Factoidal's formal tree.
 shex-behaviours is a language-design prototype. It validates through
 shex.js, not through Factoidal's Lean ShEx engine, so under Factoidal's
-rule against hand-written reimplementations it belongs in `experiments/`
-or in its own repository, not in the formal tree.
+rule against hand-written reimplementations it stays under `labs/` here,
+or would go to Factoidal's `experiments/`, never into `formal/`.
 
 `.claude/skills` is a relative symlink to Factoidal's `skills/` directory.
 It resolves when Factoidal is cloned as a sibling checkout (see
