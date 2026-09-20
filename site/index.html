@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShapesCore in the browser</title>
+<meta name="description" content="The same shape schema and graph judged under least and greatest fixpoint semantics, using the JavaScript mirror of the ShapesCore Lean core.">
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1d1c1a; --muted: #6b675f; --line: #ddd8cf; --panel: #ffffff;
+    --acc: #2f5d9e; --yes: #1f7a4d; --no: #a33a2f; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181a; --fg: #ecebe7; --muted: #a09b92; --line: #34363a; --panel: #1f2124;
+      --acc: #8db4ea; --yes: #6fcf97; --no: #ef8a7e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181a; --fg: #ecebe7; --muted: #a09b92; --line: #34363a; --panel: #1f2124;
+    --acc: #8db4ea; --yes: #6fcf97; --no: #ef8a7e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 28px 0 8px; }
+  p { margin: 6px 0; }
+  .lede { color: var(--muted); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+  textarea, select { width: 100%; font: 14px/1.45 var(--mono); color: var(--fg); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  textarea { min-height: 150px; resize: vertical; }
+  select { font-family: inherit; padding: 6px 8px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--acc); background: var(--acc); color: #fff; cursor: pointer; }
+  .bar { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin: 12px 0; }
+  .bar > div { flex: 1 1 220px; }
+  table { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  th, td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--line); font-size: 0.95rem; }
+  th { color: var(--muted); font-weight: 600; border-top: 0; }
+  td.k { font-family: var(--mono); }
+  .yes { color: var(--yes); font-weight: 600; } .no { color: var(--no); font-weight: 600; }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+  .err { color: var(--no); font-family: var(--mono); white-space: pre-wrap; }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.9rem; }
+  a { color: var(--acc); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ShapesCore in the browser</h1>
+  <p class="lede">One schema, one graph, two answers. Recursive shapes have a least-fixpoint reading (what SHACL is
+  expected to adopt) and a greatest-fixpoint reading (what ShEx uses). This page runs the JavaScript mirror of the
+  ShapesCore Lean core and shows both, plus whether they agree.</p>
+
+  <div class="bar">
+    <div>
+      <label for="preset">Example (from Ahmetaj et al., KR 2026, section 3)</label>
+      <select id="preset"></select>
+    </div>
+    <div style="flex:0 0 auto"><button id="run">Evaluate</button></div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label for="graph">Graph: one triple per line, <code>subject predicate object</code></label>
+      <textarea id="graph" spellcheck="false"></textarea>
+    </div>
+    <div>
+      <label for="cat">Catalogue: JavaScript using <code>atom ref and or ex all geq amn inv top bot</code></label>
+      <textarea id="cat" spellcheck="false"></textarea>
+    </div>
+  </div>
+  <p id="what" class="lede"></p>
+  <div id="error" class="err"></div>
+
+  <h2>Verdicts</h2>
+  <div id="out"></div>
+
+  <h2>What this shows</h2>
+  <div class="note">
+    <p><strong>LFP</strong> accepts a node only if there is a finite derivation: it is the semantics of reachability and
+    of well-founded recursion. <strong>GFP</strong> accepts unless there is a finite refutation: it is the semantics of
+    invariants and of ShEx. Where the two agree, every supported-model reading agrees too (Lean theorem
+    <code>sms_determined</code>). GFP is computed here as the complement of LFP of the dual catalogue
+    (<code>gfp_iff_not_lfp_dual</code>). Atoms available: <code>isA</code>, <code>isB</code>, <code>isC</code>,
+    <code>isD</code>, which test the node's name.</p>
+    <p>Only the common core of SHACL and ShEx is implemented: node tests, and, or, shape names, and counting over
+    one predicate step. Nothing SHACL-only or ShEx-only is here. The Lean side, with 107 theorems, is at
+    <a href="https://github.com/danbri/cacklex">danbri/cacklex</a>.</p>
+  </div>
+
+  <footer>Everything runs in your browser. The mirror is unverified; the theorem names it cites are checked by Lean.</footer>
+</main>
+
+<script type="module">
+import * as S from './shapes-core.mjs';
+const { top, bot, atom, ref, and, or, ex, all, geq, amn, inv, graph, nodesOf, lfp, gfp, pairsOf, holds, dualCatalogue } = S;
+
+const presets = {
+  bsep1: {
+    title: 'bsep1: one self-loop',
+    graph: 'a p a',
+    cat: "({ s: ex('p', ref('s')) })",
+    what: 'Under LFP nothing satisfies s, since there is no base case. Under GFP the loop supports itself.',
+  },
+  bsep2: {
+    title: 'bsep2: two self-loops',
+    graph: 'a p a\nb p b',
+    cat: "({ s: ex('p', ref('s')) })",
+    what: 'Four supported models exist ({}, {a}, {b}, {a,b}); LFP and GFP are the least and greatest of them.',
+  },
+  bsep3: {
+    title: 'bsep3: mutual recursion',
+    graph: 'a p c\nb p c',
+    cat: "({ s: and(ref('t'), ex('p', top)), t: and(ref('s'), ex('p', top)) })",
+    what: 's and t each require the other. LFP rejects both; GFP accepts both on a and b.',
+  },
+  reach1: {
+    title: 'reach1: "can reach a"',
+    graph: 'b p a\nc p d\nd p c',
+    cat: "({ r: or(atom('isA'), ex('p', ref('r'))) })",
+    what: 'Reachability is an LFP property. GFP also accepts the cycle c, d, which never reaches a.',
+  },
+  safe1: {
+    title: 'safe1: "cannot reach a" (dual of reach1)',
+    graph: 'b p a\nc p d\nd p c',
+    cat: "({ s: and(atom('isA', false), all('p', ref('s'))) })",
+    what: 'Safety is a GFP property: it holds of the cycle c, d. LFP has no base case and accepts nothing.',
+  },
+  agree: {
+    title: 'acyclic: LFP and GFP agree',
+    graph: 'x knows y\ny knows z\nz name "Zed"',
+    cat: "({ person: or(ex('name', top), ex('knows', ref('person'))) })",
+    what: 'Without a cycle in the data the two fixpoints coincide, and so does every other reading.',
+  },
+};
+
+const $ = (id) => document.getElementById(id);
+const sel = $('preset');
+for (const [k, p] of Object.entries(presets)) {
+  const o = document.createElement('option'); o.value = k; o.textContent = p.title; sel.appendChild(o);
+}
+const load = (k) => { const p = presets[k]; $('graph').value = p.graph; $('cat').value = p.cat; $('what').textContent = p.what; run(); };
+sel.addEventListener('change', () => load(sel.value));
+$('run').addEventListener('click', run);
+
+const I = { isA: (v) => v === 'a', isB: (v) => v === 'b', isC: (v) => v === 'c', isD: (v) => v === 'd' };
+
+function parseGraph(text) {
+  return graph(text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = l.match(/^(\S+)\s+(\S+)\s+(.+)$/);
+    if (!m) throw new Error(`cannot read triple: ${l}`);
+    return [m[1], m[2], m[3].trim()];
+  }));
+}
+
+function run() {
+  $('error').textContent = '';
+  let G, C;
+  try {
+    G = parseGraph($('graph').value);
+    C = new Function('top','bot','atom','ref','and','or','ex','all','geq','amn','inv', `return ${$('cat').value};`)
+      (top, bot, atom, ref, and, or, ex, all, geq, amn, inv);
+    if (!C || typeof C !== 'object') throw new Error('catalogue must be an object of shape names');
+    for (const [s, f] of Object.entries(C)) if (!f || typeof f.t !== 'string') throw new Error(`shape ${s} is not a shape expression`);
+  } catch (e) { $('error').textContent = String(e.message || e); $('out').innerHTML = ''; return; }
+
+  const nodes = nodesOf(G);
+  const L = lfp(G, I, C, nodes), U = gfp(G, I, C, nodes);
+  const names = Object.keys(C);
+  const agree = names.every((s) => nodes.every((v) => holds(L, s, v) === holds(U, s, v)));
+  const mark = (b) => `<span class="${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
+  let h = `<p>${agree ? 'LFP and GFP agree on every pair, so every supported-model reading gives the same answer.'
+                       : 'LFP and GFP differ. The pairs below are where the choice of semantics changes the verdict.'}</p>`;
+  h += '<table><tr><th>node</th>' + names.map((s) => `<th>${s} under LFP (SHACL)</th><th>${s} under GFP (ShEx)</th>`).join('') + '</tr>';
+  for (const v of nodes) {
+    h += `<tr><td class="k">${v}</td>` + names.map((s) => `<td>${mark(holds(L, s, v))}</td><td>${mark(holds(U, s, v))}</td>`).join('') + '</tr>';
+  }
+  h += '</table>';
+  const D = dualCatalogue(C);
+  h += `<p class="lede" style="margin-top:10px">Dual catalogue used to compute GFP: <code>${JSON.stringify(D)}</code></p>`;
+  $('out').innerHTML = h;
+}
+
+load('reach1');
+sel.value = 'reach1';
+</script>
+</body>
+</html>
