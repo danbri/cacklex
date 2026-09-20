@@ -3,191 +3,633 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ShapesCore in the browser</title>
-<meta name="description" content="The same shape schema and graph judged under least and greatest fixpoint semantics, using the JavaScript mirror of the ShapesCore Lean core.">
+<title>Shapes, two ways</title>
+<meta name="description" content="Validate Turtle data against the same rules written as ShEx and as SHACL, in the browser, with the verdicts explained against the input.">
 <style>
   :root {
     --bg: #fbfaf7; --fg: #1d1c1a; --muted: #6b675f; --line: #ddd8cf; --panel: #ffffff;
-    --acc: #2f5d9e; --yes: #1f7a4d; --no: #a33a2f; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --acc: #2f5d9e; --yes: #1f7a4d; --no: #a33a2f; --warn: #8a6d00;
+    --hl-data: #fff1b8; --hl-schema: #d9ecff; --hl-outside: #eee;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #17181a; --fg: #ecebe7; --muted: #a09b92; --line: #34363a; --panel: #1f2124;
-      --acc: #8db4ea; --yes: #6fcf97; --no: #ef8a7e;
+      --acc: #8db4ea; --yes: #6fcf97; --no: #ef8a7e; --warn: #e2c65a;
+      --hl-data: #4a3f12; --hl-schema: #1f3a5a; --hl-outside: #2c2e31;
     }
   }
   :root[data-theme="dark"] {
     --bg: #17181a; --fg: #ecebe7; --muted: #a09b92; --line: #34363a; --panel: #1f2124;
-    --acc: #8db4ea; --yes: #6fcf97; --no: #ef8a7e;
+    --acc: #8db4ea; --yes: #6fcf97; --no: #ef8a7e; --warn: #e2c65a;
+    --hl-data: #4a3f12; --hl-schema: #1f3a5a; --hl-outside: #2c2e31;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
   h1 { font-size: 1.6rem; margin: 0 0 4px; }
-  h2 { font-size: 1.05rem; margin: 28px 0 8px; }
+  h2 { font-size: 1.05rem; margin: 24px 0 8px; }
+  h3 { font-size: 0.95rem; margin: 0 0 6px; color: var(--muted); font-weight: 600; }
   p { margin: 6px 0; }
   .lede { color: var(--muted); }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
-  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
-  textarea, select { width: 100%; font: 14px/1.45 var(--mono); color: var(--fg); background: var(--panel);
-    border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
-  textarea { min-height: 150px; resize: vertical; }
-  select { font-family: inherit; padding: 6px 8px; }
-  button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--acc); background: var(--acc); color: #fff; cursor: pointer; }
   .bar { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin: 12px 0; }
-  .bar > div { flex: 1 1 220px; }
+  .bar > div { flex: 1 1 260px; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+  select, button { font: inherit; }
+  select { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); }
+  button { padding: 8px 14px; border-radius: 6px; border: 1px solid var(--acc); background: var(--acc); color: #fff; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--acc); }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+  pre.code { margin: 0; font: 13px/1.45 var(--mono); overflow-x: auto; white-space: pre; }
+  pre.code .ln { display: inline-block; width: 2.2em; color: var(--muted); user-select: none; text-align: right; margin-right: 0.8em; }
+  pre.code .l { display: block; padding: 0 4px; border-radius: 3px; }
+  pre.code .l.hd { background: var(--hl-data); }
+  pre.code .l.hs { background: var(--hl-schema); }
+  pre.code .l.out { background: var(--hl-outside); color: var(--muted); }
+  textarea { width: 100%; min-height: 260px; font: 13px/1.45 var(--mono); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; resize: vertical; }
+  .tbl { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-  th, td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--line); font-size: 0.95rem; }
+  th, td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--line); font-size: 0.95rem; vertical-align: top; }
   th { color: var(--muted); font-weight: 600; border-top: 0; }
-  td.k { font-family: var(--mono); }
-  .yes { color: var(--yes); font-weight: 600; } .no { color: var(--no); font-weight: 600; }
-  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+  td.k { font-family: var(--mono); font-size: 0.9rem; white-space: nowrap; }
+  tr.sel td { background: var(--hl-schema); }
+  tr.row { cursor: pointer; }
+  .yes { color: var(--yes); font-weight: 600; } .no { color: var(--no); font-weight: 600; } .warn { color: var(--warn); font-weight: 600; }
+  .why { margin: 8px 0 0; padding-left: 18px; }
+  .why li { margin: 4px 0; }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
   .err { color: var(--no); font-family: var(--mono); white-space: pre-wrap; }
   code { font-family: var(--mono); font-size: 0.92em; }
+  .tag { display: inline-block; font-size: 0.75rem; padding: 1px 6px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); margin-left: 6px; vertical-align: middle; }
   footer { margin-top: 40px; color: var(--muted); font-size: 0.9rem; }
   a { color: var(--acc); }
+  .hidden { display: none; }
 </style>
 </head>
 <body>
 <main>
-  <h1>ShapesCore in the browser</h1>
-  <p class="lede">One schema, one graph, two answers. Recursive shapes have a least-fixpoint reading (what SHACL is
-  expected to adopt) and a greatest-fixpoint reading (what ShEx uses). This page runs the JavaScript mirror of the
-  ShapesCore Lean core and shows both, plus whether they agree.</p>
+  <h1>Shapes, two ways</h1>
+  <p class="lede">The same rules written as ShEx and as SHACL, checked against Turtle data in your browser.
+  Both schemas compile to one shared core. Click a verdict to see which triples and which
+  schema lines decided it.</p>
 
   <div class="bar">
     <div>
-      <label for="preset">Example (from Ahmetaj et al., KR 2026, section 3)</label>
+      <label for="preset">Example</label>
       <select id="preset"></select>
     </div>
-    <div style="flex:0 0 auto"><button id="run">Evaluate</button></div>
+    <div style="flex:0 0 auto"><button id="edit" class="ghost">Edit the data</button></div>
   </div>
+  <p id="story" class="lede"></p>
 
-  <div class="row">
-    <div>
-      <label for="graph">Graph: one triple per line, <code>subject predicate object</code></label>
-      <textarea id="graph" spellcheck="false"></textarea>
+  <div class="grid3">
+    <div class="panel">
+      <h3>Data <span class="tag">Turtle</span></h3>
+      <pre class="code" id="data"></pre>
+      <div id="editor" class="hidden">
+        <textarea id="dataText" spellcheck="false"></textarea>
+        <div class="bar"><button id="apply">Re-validate</button></div>
+        <div id="error" class="err"></div>
+      </div>
     </div>
-    <div>
-      <label for="cat">Catalogue: JavaScript using <code>atom ref and or ex all geq amn inv top bot</code></label>
-      <textarea id="cat" spellcheck="false"></textarea>
+    <div class="panel">
+      <h3>Schema as ShEx <span class="tag">ShExC</span></h3>
+      <pre class="code" id="shex"></pre>
+    </div>
+    <div class="panel">
+      <h3>Schema as SHACL <span class="tag">Turtle</span></h3>
+      <pre class="code" id="shacl"></pre>
     </div>
   </div>
-  <p id="what" class="lede"></p>
-  <div id="error" class="err"></div>
 
   <h2>Verdicts</h2>
+  <p class="lede">Targets are the nodes the schema selects (SHACL <code>sh:targetClass</code>, or the ShEx shape map).
+  Two columns because recursive shapes have two defensible readings: least fixpoint, which SHACL
+  is expected to adopt, and greatest fixpoint, which ShEx uses.</p>
   <div id="out"></div>
+  <div id="why"></div>
 
-  <h2>What this shows</h2>
-  <div class="note">
-    <p><strong>LFP</strong> accepts a node only if there is a finite derivation: it is the semantics of reachability and
-    of well-founded recursion. <strong>GFP</strong> accepts unless there is a finite refutation: it is the semantics of
-    invariants and of ShEx. Where the two agree, every supported-model reading agrees too (Lean theorem
-    <code>sms_determined</code>). GFP is computed here as the complement of LFP of the dual catalogue
-    (<code>gfp_iff_not_lfp_dual</code>). Atoms available: <code>isA</code>, <code>isB</code>, <code>isC</code>,
-    <code>isD</code>, which test the node's name.</p>
-    <p>Only the common core of SHACL and ShEx is implemented: node tests, and, or, shape names, and counting over
-    one predicate step. Nothing SHACL-only or ShEx-only is here. The Lean side, with 107 theorems, is at
-    <a href="https://github.com/danbri/cacklex">danbri/cacklex</a>.</p>
-  </div>
+  <h2>Common core, and beyond it</h2>
+  <div class="note" id="core"></div>
 
-  <footer>Everything runs in your browser. The mirror is unverified; the theorem names it cites are checked by Lean.</footer>
+  <footer>Runs the JavaScript mirror of the <a href="https://github.com/danbri/cacklex">ShapesCore</a> Lean core.
+  The mirror is unverified; the Lean theorems it cites are checked. The data parser here handles a Turtle
+  subset (prefixes, prefixed names, IRIs, literals, <code>;</code> and <code>,</code>); it is for the demo,
+  not a reference parser.</footer>
 </main>
 
 <script type="module">
 import * as S from './shapes-core.mjs';
-const { top, bot, atom, ref, and, or, ex, all, geq, amn, inv, graph, nodesOf, lfp, gfp, pairsOf, holds, dualCatalogue } = S;
+const { top, bot, atom, ref, and, or, geq, amn, graph, nodesOf, lfp, gfp, holds, sat, asg } = S;
 
-const presets = {
-  bsep1: {
-    title: 'bsep1: one self-loop',
-    graph: 'a p a',
-    cat: "({ s: ex('p', ref('s')) })",
-    what: 'Under LFP nothing satisfies s, since there is no base case. Under GFP the loop supports itself.',
-  },
-  bsep2: {
-    title: 'bsep2: two self-loops',
-    graph: 'a p a\nb p b',
-    cat: "({ s: ex('p', ref('s')) })",
-    what: 'Four supported models exist ({}, {a}, {b}, {a,b}); LFP and GFP are the least and greatest of them.',
-  },
-  bsep3: {
-    title: 'bsep3: mutual recursion',
-    graph: 'a p c\nb p c',
-    cat: "({ s: and(ref('t'), ex('p', top)), t: and(ref('s'), ex('p', top)) })",
-    what: 's and t each require the other. LFP rejects both; GFP accepts both on a and b.',
-  },
-  reach1: {
-    title: 'reach1: "can reach a"',
-    graph: 'b p a\nc p d\nd p c',
-    cat: "({ r: or(atom('isA'), ex('p', ref('r'))) })",
-    what: 'Reachability is an LFP property. GFP also accepts the cycle c, d, which never reaches a.',
-  },
-  safe1: {
-    title: 'safe1: "cannot reach a" (dual of reach1)',
-    graph: 'b p a\nc p d\nd p c',
-    cat: "({ s: and(atom('isA', false), all('p', ref('s'))) })",
-    what: 'Safety is a GFP property: it holds of the cycle c, d. LFP has no base case and accepts nothing.',
-  },
-  agree: {
-    title: 'acyclic: LFP and GFP agree',
-    graph: 'x knows y\ny knows z\nz name "Zed"',
-    cat: "({ person: or(ex('name', top), ex('knows', ref('person'))) })",
-    what: 'Without a cycle in the data the two fixpoints coincide, and so does every other reading.',
+// ---------- vocab ----------
+const NS = {
+  rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', xsd: 'http://www.w3.org/2001/XMLSchema#',
+  schema: 'http://schema.org/', ex: 'http://example.org/', sh: 'http://www.w3.org/ns/shacl#',
+};
+const iri = (s) => `<${s}>`;
+const RDF_TYPE = iri(NS.rdf + 'type');
+const isIri = (v) => v.startsWith('<');
+const isLit = (v) => v.startsWith('"');
+const litDt = (v) => { const m = v.match(/\^\^<([^>]*)>$/); return m ? m[1] : (v.includes('"@') ? NS.rdf + 'langString' : NS.xsd + 'string'); };
+const litLex = (v) => { const m = v.match(/^"((?:[^"\\]|\\.)*)"/); return m ? m[1] : v; };
+const shortIri = (v) => { const s = v.slice(1, -1); for (const [p, u] of Object.entries(NS)) if (s.startsWith(u)) return `${p}:${s.slice(u.length)}`; return v; };
+const show = (v) => isIri(v) ? shortIri(v) : isLit(v) ? `"${litLex(v)}"` : v;
+
+// ---------- a Turtle subset parser (demo only) ----------
+function parseTurtle(text) {
+  const prefixes = {}; const triples = []; // triples carry the source line
+  const lines = text.split('\n');
+  // tokeniser over the whole text, tracking line numbers
+  const toks = [];
+  for (let ln = 0; ln < lines.length; ln++) {
+    let s = lines[ln];
+    let i = 0;
+    while (i < s.length) {
+      const c = s[i];
+      if (c === '#') break;
+      if (/\s/.test(c)) { i++; continue; }
+      if (c === '<') { const j = s.indexOf('>', i); if (j < 0) throw new Error(`line ${ln + 1}: unclosed <`); toks.push({ t: 'iri', v: s.slice(i + 1, j), ln }); i = j + 1; continue; }
+      if (c === '"') {
+        let j = i + 1; let lex = '';
+        while (j < s.length && s[j] !== '"') { if (s[j] === '\\') { lex += s[j] + s[j + 1]; j += 2; } else lex += s[j++]; }
+        if (j >= s.length) throw new Error(`line ${ln + 1}: unclosed string`);
+        j++; let dt = null, lang = null;
+        if (s.startsWith('^^', j)) { j += 2; const m = s.slice(j).match(/^(<[^>]*>|[A-Za-z_][\w-]*:[\w.-]*)/); if (!m) throw new Error(`line ${ln + 1}: bad datatype`); dt = m[1]; j += m[1].length; }
+        else if (s[j] === '@') { const m = s.slice(j).match(/^@([A-Za-z-]+)/); lang = m[1]; j += m[0].length; }
+        toks.push({ t: 'lit', lex, dt, lang, ln }); i = j; continue;
+      }
+      if (/[.;,\[\]]/.test(c)) { toks.push({ t: c, ln }); i++; continue; }
+      const m = s.slice(i).match(/^(@prefix|@base|a(?=[\s<]|$)|[+-]?\d+\.\d+|[+-]?\d+|true|false|_:[\w-]+|[A-Za-z_][\w-]*:[\w.-]*?(?=[\s;,.\]]|$)|[A-Za-z_][\w-]*:)/);
+      if (!m) throw new Error(`line ${ln + 1}: cannot read "${s.slice(i, i + 12)}"`);
+      toks.push({ t: 'word', v: m[1], ln }); i += m[1].length;
+    }
+  }
+  let p = 0;
+  const peek = () => toks[p]; const next = () => toks[p++];
+  const expand = (tok) => {
+    if (tok.t === 'iri') return iri(tok.v);
+    if (tok.t === 'lit') {
+      if (tok.lang) return `"${tok.lex}"@${tok.lang}`;
+      const dt = tok.dt ? (tok.dt.startsWith('<') ? tok.dt.slice(1, -1) : expandPn(tok.dt, tok.ln).slice(1, -1)) : NS.xsd + 'string';
+      return `"${tok.lex}"^^<${dt}>`;
+    }
+    const w = tok.v;
+    if (w === 'a') return RDF_TYPE;
+    if (/^[+-]?\d+\.\d+$/.test(w)) return `"${w}"^^<${NS.xsd}decimal>`;
+    if (/^[+-]?\d+$/.test(w)) return `"${w}"^^<${NS.xsd}integer>`;
+    if (w === 'true' || w === 'false') return `"${w}"^^<${NS.xsd}boolean>`;
+    if (w.startsWith('_:')) return w;
+    return expandPn(w, tok.ln);
+  };
+  const expandPn = (w, ln) => { const k = w.indexOf(':'); const pf = w.slice(0, k); if (!(pf in prefixes)) throw new Error(`line ${ln + 1}: unknown prefix "${pf}:"`); return iri(prefixes[pf] + w.slice(k + 1)); };
+  while (p < toks.length) {
+    const t = next();
+    if (t.t === 'word' && t.v === '@prefix') { const pf = next().v.replace(/:$/, ''); const u = next(); prefixes[pf] = u.v; if (peek()?.t === '.') next(); continue; }
+    const s = expand(t);
+    for (;;) {
+      const pt = next(); if (!pt) throw new Error(`line ${t.ln + 1}: statement has no predicate`);
+      const pr = expand(pt);
+      for (;;) {
+        const ot = next(); if (!ot) throw new Error(`line ${pt.ln + 1}: missing object`);
+        triples.push({ s, p: pr, o: expand(ot), ln: ot.ln });
+        if (peek()?.t === ',') { next(); continue; } break;
+      }
+      const sep = next(); if (!sep) throw new Error(`line ${pt.ln + 1}: missing "." at end of statement`);
+      if (sep.t === ';') { if (peek()?.t === '.') { next(); break; } continue; }
+      if (sep.t === '.') break;
+      throw new Error(`line ${sep.ln + 1}: expected ";" or "."`);
+    }
+  }
+  return { triples, prefixes };
+}
+
+// ---------- atoms (node tests) shared by the examples ----------
+const I = {
+  'xsd:string':  (v) => isLit(v) && litDt(v) === NS.xsd + 'string',
+  'xsd:decimal': (v) => isLit(v) && (litDt(v) === NS.xsd + 'decimal' || litDt(v) === NS.xsd + 'integer'),
+  'xsd:integer': (v) => isLit(v) && litDt(v) === NS.xsd + 'integer',
+  'xsd:date':    (v) => isLit(v) && litDt(v) === NS.xsd + 'date' && /^\d{4}-\d{2}-\d{2}$/.test(litLex(v)),
+  'IRI':         (v) => isIri(v),
+  'is schema:Person':       (v) => v === iri(NS.schema + 'Person'),
+  'is schema:Organization': (v) => v === iri(NS.schema + 'Organization'),
+  'positive':    (v) => isLit(v) && Number(litLex(v)) > 0,
+};
+const P = (q) => iri(NS[q.split(':')[0]] + q.split(':')[1]);   // 'schema:name' -> full IRI in <>
+const exactlyOne = (p, phi = top) => and(geq(1, P(p), phi), amn(1, P(p), bot));
+const atMostOne = (p) => amn(1, P(p), bot);
+const every = (p, phi) => amn(0, P(p), phi);
+const some = (p, phi) => geq(1, P(p), phi);
+
+// A constraint: a core expression plus the lines it corresponds to in each schema text.
+// `outside` marks a constraint that the common core cannot express; it is shown, not evaluated.
+const c = (id, text, expr, shex, shacl, outside = null) => ({ id, text, expr, shex, shacl, outside });
+
+// ---------- examples ----------
+const examples = {};
+
+examples.people = {
+  title: 'People and who they know',
+  story: 'A contact list. A person needs exactly one name, at most one email, and may know other people, who must themselves be valid people. Alice and Bob know each other, which is where the two readings of recursion part company.',
+  data: `@prefix schema: <http://schema.org/> .
+@prefix ex: <http://example.org/> .
+
+ex:alice a schema:Person ;
+  schema:name "Alice Adams" ;
+  schema:email "alice@example.org" ;
+  schema:knows ex:bob .
+
+ex:bob a schema:Person ;
+  schema:name "Bob Brown" ;
+  schema:knows ex:alice .
+
+ex:carol a schema:Person ;
+  schema:email "carol@example.org" .
+
+ex:dave a schema:Person ;
+  schema:name "Dave Diaz" ;
+  schema:email "dave@example.org", "dd@example.com" .
+
+ex:erin a schema:Person ;
+  schema:name "Erin Eyre" ;
+  schema:knows ex:acme .
+
+ex:frank a schema:Person ;
+  schema:name "Frank Fox" .
+
+ex:acme a schema:Organization ;
+  schema:name "Acme Ltd" .`,
+  shex: `PREFIX schema: <http://schema.org/>
+PREFIX ex: <http://example.org/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:PersonShape {
+  a [ schema:Person ] ;
+  schema:name xsd:string ;
+  schema:email xsd:string ? ;
+  schema:knows @ex:PersonShape *
+}
+
+# shape map: every node typed schema:Person is checked
+# { FOCUS a schema:Person }@ex:PersonShape`,
+  shacl: `@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix schema: <http://schema.org/> .
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:PersonShape a sh:NodeShape ;
+  sh:targetClass schema:Person ;
+  sh:class schema:Person ;
+  sh:property [ sh:path schema:name ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path schema:email ;
+    sh:datatype xsd:string ;
+    sh:maxCount 1 ] ;
+  sh:property [ sh:path schema:knows ;
+    sh:node ex:PersonShape ] .`,
+  shapes: {
+    Person: {
+      label: 'ex:PersonShape', target: 'schema:Person',
+      constraints: [
+        c('type', 'is typed schema:Person', some('rdf:type', atom('is schema:Person')), [6], [8]),
+        c('name1', 'has exactly one schema:name', exactlyOne('schema:name'), [7], [9, 11]),
+        c('nameStr', 'every schema:name is an xsd:string', every('schema:name', atom('xsd:string')), [7], [9, 10]),
+        c('email1', 'has at most one schema:email', atMostOne('schema:email'), [8], [12, 14]),
+        c('emailStr', 'every schema:email is an xsd:string', every('schema:email', atom('xsd:string')), [8], [12, 13]),
+        c('knows', 'everyone in schema:knows is a valid ex:PersonShape', every('schema:knows', ref('Person')), [9], [15, 16]),
+      ],
+    },
   },
 };
 
+examples.orders = {
+  title: 'Orders and the customers who placed them',
+  story: 'A small shop. Every order needs a date, one or more line items with a positive quantity, and a customer who is a valid person. Order 3 was placed by a customer record with no name, so the order fails because the customer does.',
+  data: `@prefix schema: <http://schema.org/> .
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:order1 a schema:Order ;
+  schema:orderDate "2026-09-01"^^xsd:date ;
+  schema:customer ex:alice ;
+  schema:orderedItem ex:line1 .
+
+ex:order2 a schema:Order ;
+  schema:orderDate "2026-09-02"^^xsd:date ;
+  schema:customer ex:alice ;
+  schema:orderedItem ex:line2, ex:line3 .
+
+ex:order3 a schema:Order ;
+  schema:orderDate "September 3rd" ;
+  schema:customer ex:ghost ;
+  schema:orderedItem ex:line4 .
+
+ex:line1 schema:orderQuantity 2 .
+ex:line2 schema:orderQuantity 1 .
+ex:line3 schema:orderQuantity 0 .
+ex:line4 schema:orderQuantity 5 .
+
+ex:alice a schema:Person ; schema:name "Alice Adams" .
+ex:ghost a schema:Person .`,
+  shex: `PREFIX schema: <http://schema.org/>
+PREFIX ex: <http://example.org/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:OrderShape {
+  schema:orderDate xsd:date ;
+  schema:customer @ex:PersonShape ;
+  schema:orderedItem @ex:LineShape +
+}
+
+ex:LineShape {
+  schema:orderQuantity xsd:integer MININCLUSIVE 1
+}
+
+ex:PersonShape {
+  schema:name xsd:string
+}
+
+# shape map: { FOCUS a schema:Order }@ex:OrderShape`,
+  shacl: `@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix schema: <http://schema.org/> .
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:OrderShape a sh:NodeShape ;
+  sh:targetClass schema:Order ;
+  sh:property [ sh:path schema:orderDate ;
+    sh:datatype xsd:date ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path schema:customer ;
+    sh:node ex:PersonShape ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path schema:orderedItem ;
+    sh:node ex:LineShape ; sh:minCount 1 ] .
+
+ex:LineShape a sh:NodeShape ;
+  sh:property [ sh:path schema:orderQuantity ;
+    sh:datatype xsd:integer ; sh:minInclusive 1 ;
+    sh:minCount 1 ; sh:maxCount 1 ] .
+
+ex:PersonShape a sh:NodeShape ;
+  sh:property [ sh:path schema:name ;
+    sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] .`,
+  shapes: {
+    Order: {
+      label: 'ex:OrderShape', target: 'schema:Order',
+      constraints: [
+        c('date1', 'has exactly one schema:orderDate', exactlyOne('schema:orderDate'), [6], [8, 9]),
+        c('dateT', 'the schema:orderDate is an xsd:date', every('schema:orderDate', atom('xsd:date')), [6], [8, 9]),
+        c('cust1', 'has exactly one schema:customer', exactlyOne('schema:customer'), [7], [10, 11]),
+        c('custP', 'the schema:customer is a valid ex:PersonShape', every('schema:customer', ref('Person')), [7], [10, 11]),
+        c('items', 'has at least one schema:orderedItem, each a valid ex:LineShape', and(some('schema:orderedItem', top), every('schema:orderedItem', ref('Line'))), [8], [12, 13]),
+      ],
+    },
+    Line: {
+      label: 'ex:LineShape', target: null,
+      constraints: [
+        c('qty1', 'has exactly one schema:orderQuantity', exactlyOne('schema:orderQuantity'), [12], [16, 18]),
+        c('qtyT', 'the quantity is an xsd:integer of at least 1', every('schema:orderQuantity', and(atom('xsd:integer'), atom('positive'))), [12], [16, 17]),
+      ],
+    },
+    Person: {
+      label: 'ex:PersonShape', target: null,
+      constraints: [
+        c('name1', 'has exactly one schema:name, an xsd:string', and(exactlyOne('schema:name'), every('schema:name', atom('xsd:string'))), [16], [21, 22]),
+      ],
+    },
+  },
+};
+
+examples.books = {
+  title: 'Books: where the two languages stop agreeing',
+  story: 'A catalogue. The ISBN and price rules are in the shared core and are checked. Two rules are not: SHACL can say the sale price must be less than the list price, and ShEx can say the same predicate holds one person and one organisation. Each is shown greyed out on the side that cannot express it, and neither is evaluated here.',
+  data: `@prefix schema: <http://schema.org/> .
+@prefix ex: <http://example.org/> .
+
+ex:book1 a schema:Book ;
+  schema:name "Shape Expressions in Practice" ;
+  schema:isbn "978-0-306-40615-7" ;
+  schema:price 29.99 ;
+  schema:author ex:alice, ex:acme .
+
+ex:book2 a schema:Book ;
+  schema:name "Untitled draft" ;
+  schema:price -5 ;
+  schema:author ex:bob .
+
+ex:book3 a schema:Book ;
+  schema:name "Two ISBNs" ;
+  schema:isbn "978-0-306-40615-7", "0-306-40615-2" ;
+  schema:price 12.50 .
+
+ex:alice a schema:Person ; schema:name "Alice Adams" .
+ex:bob a schema:Person ; schema:name "Bob Brown" .
+ex:acme a schema:Organization ; schema:name "Acme Ltd" .`,
+  shex: `PREFIX schema: <http://schema.org/>
+PREFIX ex: <http://example.org/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:BookShape {
+  schema:isbn xsd:string ;
+  schema:price xsd:decimal MININCLUSIVE 0 ;
+  schema:author @ex:PersonShape ;
+  schema:author @ex:OrgShape ?
+  # the same predicate twice: one author is a person,
+  # an optional second is an organisation. ShEx-only.
+  # salePrice < price: not expressible in ShEx
+}
+ex:PersonShape { a [ schema:Person ] }
+ex:OrgShape    { a [ schema:Organization ] }
+
+# shape map: { FOCUS a schema:Book }@ex:BookShape`,
+  shacl: `@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix schema: <http://schema.org/> .
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:BookShape a sh:NodeShape ;
+  sh:targetClass schema:Book ;
+  sh:property [ sh:path schema:isbn ;
+    sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path schema:price ;
+    sh:datatype xsd:decimal ; sh:minInclusive 0 ;
+    sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path schema:salePrice ;
+    sh:lessThan schema:price ] .
+  # salePrice < price compares two values of the
+  # same node: node identity, SHACL-only.
+  # "one person author and one org author" as a
+  # partition of schema:author: not expressible in SHACL.`,
+  shapes: {
+    Book: {
+      label: 'ex:BookShape', target: 'schema:Book',
+      constraints: [
+        c('isbn1', 'has exactly one schema:isbn, an xsd:string', and(exactlyOne('schema:isbn'), every('schema:isbn', atom('xsd:string'))), [6], [8, 9]),
+        c('price', 'has exactly one schema:price, a decimal of at least 0', and(exactlyOne('schema:price'), every('schema:price', and(atom('xsd:decimal'), atom('positive')))), [7], [10, 12]),
+        c('authors', 'schema:author is partitioned into one person and at most one organisation', null, [8, 9, 10, 11], [17, 18],
+          'ShEx-only: the same predicate appears in two triple constraints, and the triples must be split between them. SHACL has sh:qualifiedValueShape for the single-predicate case, but not the general partition, and this demo does not evaluate it.'),
+        c('sale', 'schema:salePrice is less than schema:price', null, [12], [13, 14, 15, 16],
+          'SHACL-only: sh:lessThan compares the values reached by two paths from the same node. ShEx cannot tell whether two triples end at the same or related nodes, and the shared core has no such comparison, so this is not evaluated here.'),
+      ],
+    },
+  },
+};
+
+// ---------- rendering ----------
 const $ = (id) => document.getElementById(id);
-const sel = $('preset');
-for (const [k, p] of Object.entries(presets)) {
-  const o = document.createElement('option'); o.value = k; o.textContent = p.title; sel.appendChild(o);
-}
-const load = (k) => { const p = presets[k]; $('graph').value = p.graph; $('cat').value = p.cat; $('what').textContent = p.what; run(); };
-sel.addEventListener('change', () => load(sel.value));
-$('run').addEventListener('click', run);
-
-const I = { isA: (v) => v === 'a', isB: (v) => v === 'b', isC: (v) => v === 'c', isD: (v) => v === 'd' };
-
-function parseGraph(text) {
-  return graph(text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-    const m = l.match(/^(\S+)\s+(\S+)\s+(.+)$/);
-    if (!m) throw new Error(`cannot read triple: ${l}`);
-    return [m[1], m[2], m[3].trim()];
-  }));
+const esc = (s) => s.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+function renderCode(el, text, hl = {}) {
+  el.innerHTML = text.split('\n').map((line, i) => {
+    const cls = hl[i + 1] ? ` ${hl[i + 1]}` : '';
+    return `<span class="l${cls}"><span class="ln">${i + 1}</span>${esc(line)}</span>`;
+  }).join('');
 }
 
-function run() {
+let ex, parsed, G, result;
+
+function loadExample(key) {
+  ex = examples[key];
+  $('story').textContent = ex.story;
+  $('dataText').value = ex.data;
+  $('editor').classList.add('hidden');
+  validate(ex.data);
+}
+
+function validate(dataText) {
   $('error').textContent = '';
-  let G, C;
-  try {
-    G = parseGraph($('graph').value);
-    C = new Function('top','bot','atom','ref','and','or','ex','all','geq','amn','inv', `return ${$('cat').value};`)
-      (top, bot, atom, ref, and, or, ex, all, geq, amn, inv);
-    if (!C || typeof C !== 'object') throw new Error('catalogue must be an object of shape names');
-    for (const [s, f] of Object.entries(C)) if (!f || typeof f.t !== 'string') throw new Error(`shape ${s} is not a shape expression`);
-  } catch (e) { $('error').textContent = String(e.message || e); $('out').innerHTML = ''; return; }
-
+  try { parsed = parseTurtle(dataText); } catch (e) { $('error').textContent = e.message; $('editor').classList.remove('hidden'); return; }
+  G = graph(parsed.triples.map((t) => [t.s, t.p, t.o]));
   const nodes = nodesOf(G);
-  const L = lfp(G, I, C, nodes), U = gfp(G, I, C, nodes);
-  const names = Object.keys(C);
-  const agree = names.every((s) => nodes.every((v) => holds(L, s, v) === holds(U, s, v)));
-  const mark = (b) => `<span class="${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
-  let h = `<p>${agree ? 'LFP and GFP agree on every pair, so every supported-model reading gives the same answer.'
-                       : 'LFP and GFP differ. The pairs below are where the choice of semantics changes the verdict.'}</p>`;
-  h += '<table><tr><th>node</th>' + names.map((s) => `<th>${s} under LFP (SHACL)</th><th>${s} under GFP (ShEx)</th>`).join('') + '</tr>';
-  for (const v of nodes) {
-    h += `<tr><td class="k">${v}</td>` + names.map((s) => `<td>${mark(holds(L, s, v))}</td><td>${mark(holds(U, s, v))}</td>`).join('') + '</tr>';
+  const C = {};
+  for (const [name, sh] of Object.entries(ex.shapes)) {
+    const exprs = sh.constraints.filter((k) => k.expr).map((k) => k.expr);
+    C[name] = exprs.length ? and(...exprs) : top;
   }
-  h += '</table>';
-  const D = dualCatalogue(C);
-  h += `<p class="lede" style="margin-top:10px">Dual catalogue used to compute GFP: <code>${JSON.stringify(D)}</code></p>`;
-  $('out').innerHTML = h;
+  const L = lfp(G, I, C, nodes), U = gfp(G, I, C, nodes);
+  const targets = [];
+  for (const [name, sh] of Object.entries(ex.shapes)) {
+    if (!sh.target) continue;
+    const typeIri = P(sh.target);
+    for (const v of nodes) if (parsed.triples.some((t) => t.s === v && t.p === RDF_TYPE && t.o === typeIri)) targets.push({ shape: name, node: v });
+  }
+  result = { C, L, U, targets, nodes };
+  renderAll();
+  const firstFail = targets.find((t) => !holds(U, t.shape, t.node) || !holds(L, t.shape, t.node));
+  select(firstFail ? targets.indexOf(firstFail) : 0);
 }
 
-load('reach1');
-sel.value = 'reach1';
+function renderAll() {
+  const { L, U, targets } = result;
+  const mark = (b) => `<span class="${b ? 'yes' : 'no'}">${b ? 'valid' : 'invalid'}</span>`;
+  const agree = targets.every((t) => holds(L, t.shape, t.node) === holds(U, t.shape, t.node));
+  let h = `<p>${targets.length} target node${targets.length === 1 ? '' : 's'}. ${agree
+    ? 'Both readings agree on every target, so any other reading of recursion agrees too.'
+    : 'The readings differ on some targets: those are the nodes whose validity depends on a cycle.'}</p>`;
+  h += '<div class="tbl"><table><tr><th>node</th><th>shape</th><th>least fixpoint (SHACL)</th><th>greatest fixpoint (ShEx)</th></tr>';
+  targets.forEach((t, i) => {
+    h += `<tr class="row" data-i="${i}"><td class="k">${show(t.node)}</td><td class="k">${ex.shapes[t.shape].label}</td><td>${mark(holds(L, t.shape, t.node))}</td><td>${mark(holds(U, t.shape, t.node))}</td></tr>`;
+  });
+  h += '</table></div>';
+  $('out').innerHTML = h;
+  for (const row of $('out').querySelectorAll('tr.row')) row.addEventListener('click', () => select(Number(row.dataset.i)));
+
+  // the core summary
+  let k = '<p>Every constraint is compiled to the shared core: node tests, and/or, shape references, and counting over one predicate. What each schema line became:</p><ul class="why">';
+  for (const [name, sh] of Object.entries(ex.shapes)) for (const con of sh.constraints) {
+    k += con.outside
+      ? `<li><span class="warn">outside the core</span> ${ex.shapes[name].label}: ${esc(con.text)}. ${esc(con.outside)}</li>`
+      : `<li>${ex.shapes[name].label}: ${esc(con.text)}</li>`;
+  }
+  k += '</ul>';
+  $('core').innerHTML = k;
+}
+
+// Explain one target: which constraints fail under each reading, with the triples involved.
+function explain(t, A, depth = 0) {
+  const sh = ex.shapes[t.shape];
+  const out = [];
+  for (const con of sh.constraints) {
+    if (!con.expr) continue;
+    const ok = sat(G, I, A)(con.expr, t.node);
+    if (ok) continue;
+    const preds = new Set();
+    (function walk(f) { if (!f) return; if (f.st) preds.add(f.st.p); if (f.a) walk(f.a); if (f.b) walk(f.b); if (f.phi) walk(f.phi); })(con.expr);
+    const triples = parsed.triples.filter((x) => x.s === t.node && preds.has(x.p));
+    // if the constraint refers to another shape, say which successors fail it and why
+    const refs = []; (function walk(f) { if (!f) return; if (f.t === 'ref') refs.push(f.s); if (f.a) walk(f.a); if (f.b) walk(f.b); if (f.phi) walk(f.phi); })(con.expr);
+    const nested = [];
+    if (depth === 0) for (const shape of refs) for (const x of triples) {
+      if (holds(A, shape, x.o) || nested.some((n) => n.node === x.o)) continue;
+      const inner = ex.shapes[shape] ? explain({ shape, node: x.o }, A, depth + 1) : [];
+      nested.push({ node: x.o, shape, fails: inner });
+    }
+    out.push({ con, triples, preds, nested });
+  }
+  return out;
+}
+
+function select(i) {
+  const t = result.targets[i]; if (!t) return;
+  for (const row of $('out').querySelectorAll('tr.row')) row.classList.toggle('sel', Number(row.dataset.i) === i);
+  const failsL = explain(t, result.L), failsU = explain(t, result.U);
+  const sh = ex.shapes[t.shape];
+  const hlData = {}, hlShex = {}, hlShacl = {};
+  // grey out constraints the core cannot express
+  for (const con of sh.constraints) if (con.outside) { con.shex.forEach((n) => hlShex[n] = 'out'); con.shacl.forEach((n) => hlShacl[n] = 'out'); }
+  const fails = failsU.length ? failsU : failsL;
+  const subjectLines = parsed.triples.filter((x) => x.s === t.node).map((x) => x.ln + 1);
+  if (!fails.length) subjectLines.forEach((n) => hlData[n] = 'hd');
+  for (const f of fails) {
+    f.triples.forEach((x) => hlData[x.ln + 1] = 'hd');
+    for (const n of f.nested) for (const g of n.fails) {
+      g.triples.forEach((x) => hlData[x.ln + 1] = 'hd');
+      if (!g.triples.length) parsed.triples.filter((x) => x.s === n.node).forEach((x) => hlData[x.ln + 1] = hlData[x.ln + 1] || 'hd');
+      g.con.shex.forEach((k) => hlShex[k] = 'hs'); g.con.shacl.forEach((k) => hlShacl[k] = 'hs');
+    }
+    if (!f.triples.length) subjectLines.forEach((n) => hlData[n] = hlData[n] || 'hd');
+    f.con.shex.forEach((n) => hlShex[n] = 'hs'); f.con.shacl.forEach((n) => hlShacl[n] = 'hs');
+  }
+  renderCode($('data'), $('dataText').value, hlData);
+  renderCode($('shex'), ex.shex, hlShex);
+  renderCode($('shacl'), ex.shacl, hlShacl);
+
+  const validU = holds(result.U, t.shape, t.node), validL = holds(result.L, t.shape, t.node);
+  let h = `<h3 style="margin-top:12px">${esc(show(t.node))} against ${esc(sh.label)}</h3>`;
+  const describe = (f) => {
+    const what = f.triples.length
+      ? `Found: ${f.triples.map((x) => `${show(x.p)} ${show(x.o)}`).join('; ')} (data line${f.triples.length > 1 ? 's' : ''} ${[...new Set(f.triples.map((x) => x.ln + 1))].join(', ')}).`
+      : `Found nothing for ${[...f.preds].map(show).join(', ')} on this node.`;
+    const lines = (con) => `ShEx line${con.shex.length > 1 ? 's' : ''} ${con.shex.join(', ')}; SHACL line${con.shacl.length > 1 ? 's' : ''} ${con.shacl.join(', ')}.`;
+    let li = `<li><span class="no">fails</span> "${esc(f.con.text)}". ${esc(what)} ${lines(f.con)}`;
+    for (const n of f.nested) {
+      const label = ex.shapes[n.shape].label;
+      li += n.fails.length
+        ? `<ul class="why">${n.fails.map((g) => { const got = g.triples.length ? `Found: ${g.triples.map((x) => `${show(x.p)} ${show(x.o)}`).join('; ')} (data line${g.triples.length > 1 ? 's' : ''} ${[...new Set(g.triples.map((x) => x.ln + 1))].join(', ')}).` : `Found nothing for ${[...g.preds].map(show).join(', ')} on ${show(n.node)}.`; return `<li>${esc(show(n.node))} is not a valid ${esc(label)}: "${esc(g.con.text)}". ${esc(got)} ${lines(g.con)}</li>`; }).join('')}</ul>`
+        : `<ul class="why"><li>${esc(show(n.node))} is not a valid ${esc(label)} under this reading, though none of its own constraints fails on its own: its validity depends on a cycle.</li></ul>`;
+    }
+    return li + '</li>';
+  };
+  if (validU && validL) {
+    h += `<p><span class="yes">valid</span> under both readings. Every constraint of ${esc(sh.label)} holds; the node's triples are highlighted.</p>`;
+  } else if (validU && !validL) {
+    h += `<p><span class="yes">valid</span> under the greatest fixpoint, <span class="no">invalid</span> under the least. Under the least fixpoint a node is valid only if that can be established from nodes already known valid, and here the reasons run in a circle:</p><ul class="why">${failsL.map(describe).join('')}</ul><p>ShEx accepts the circle because nothing in the data contradicts the shapes. A least-fixpoint validator rejects it because nothing in the data establishes them either. The data and the schemas are identical; only the reading of recursion differs.</p>`;
+  } else {
+    h += `<ul class="why">${fails.map(describe).join('')}</ul>`;
+    const refFails = fails.filter((f) => [...(function* g(f) { if (f.t === 'ref') yield f.s; if (f.a) yield* g(f.a); if (f.b) yield* g(f.b); if (f.phi) yield* g(f.phi); })(f.con.expr)].length);
+    if (refFails.length) h += `<p class="lede">A constraint that refers to another shape fails when the node it points at fails that shape; the reasons are listed under it.</p>`;
+  }
+  $('why').innerHTML = h;
+}
+
+// ---------- wiring ----------
+const sel = $('preset');
+for (const [k, e] of Object.entries(examples)) { const o = document.createElement('option'); o.value = k; o.textContent = e.title; sel.appendChild(o); }
+sel.addEventListener('change', () => loadExample(sel.value));
+$('edit').addEventListener('click', () => $('editor').classList.toggle('hidden'));
+$('apply').addEventListener('click', () => validate($('dataText').value));
+loadExample('people');
 </script>
 </body>
 </html>
