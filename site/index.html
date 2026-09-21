@@ -65,6 +65,13 @@
   .tag { display: inline-block; font-size: 0.75rem; padding: 1px 6px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); margin-left: 6px; vertical-align: middle; }
   footer { margin-top: 40px; color: var(--muted); font-size: 0.9rem; }
   a { color: var(--acc); }
+  .gloss { min-height: 2.6em; margin: 8px 0 0; padding: 6px 8px; font-size: 0.88rem; color: var(--fg); background: var(--bg); border: 1px dashed var(--line); border-radius: 6px; }
+  .gloss .k { font-family: var(--mono); color: var(--muted); font-size: 0.8rem; }
+  .blurb { margin: 10px 0 0; font-size: 0.92rem; }
+  .blurb summary { cursor: pointer; color: var(--acc); font-weight: 600; }
+  .blurb p { margin: 6px 0 0; }
+  pre.code .l:hover { outline: 1px solid var(--acc); }
+  .differs { margin: 10px 0 0; }
   .hidden { display: none; }
 </style>
 </head>
@@ -83,6 +90,7 @@
     <div style="flex:0 0 auto"><button id="edit" class="ghost">Edit the data</button></div>
   </div>
   <p id="story" class="lede"></p>
+  <p id="differs" class="differs"></p>
 
   <div class="grid3">
     <div class="panel">
@@ -97,10 +105,14 @@
     <div class="panel">
       <h3>Schema as ShEx <span class="tag">ShExC</span></h3>
       <pre class="code" id="shex"></pre>
+      <div class="gloss" id="shexGloss"><span class="k">hover or tap a line</span></div>
+      <details class="blurb" open><summary>In plain English</summary><div id="shexBlurb"></div></details>
     </div>
     <div class="panel">
       <h3>Schema as SHACL <span class="tag">Turtle</span></h3>
       <pre class="code" id="shacl"></pre>
+      <div class="gloss" id="shaclGloss"><span class="k">hover or tap a line</span></div>
+      <details class="blurb" open><summary>In plain English</summary><div id="shaclBlurb"></div></details>
     </div>
   </div>
 
@@ -290,6 +302,33 @@ ex:PersonShape a sh:NodeShape ;
     sh:maxCount 1 ] ;
   sh:property [ sh:path schema:knows ;
     sh:node ex:PersonShape ] .`,
+  shexBlurb: `<p>One shape. A person node is typed schema:Person, has exactly one name (a string), at most one email (a string), and may know any number of nodes, each of which must itself be a valid person. Anything else about the node is ignored.</p>
+<p>Which nodes to check is not in the schema: the shape map at the bottom selects every node typed schema:Person. Because <code>schema:knows</code> points back at the same shape, ShEx's rule for recursion applies: a node is valid when nothing in the data contradicts the shape. Two people who know each other are therefore both valid.</p>`,
+  shaclBlurb: `<p>One node shape, and it chooses its own focus nodes: every instance of schema:Person (<code>sh:targetClass</code>). Each must be an instance of schema:Person, have exactly one schema:name that is a string, at most one schema:email that is a string, and every value of schema:knows must itself conform to the shape (<code>sh:node</code>). Other properties are ignored.</p>
+<p>This says what the ShEx document says, but the counts are written out as <code>sh:minCount</code> and <code>sh:maxCount</code>, and the targeting is inside the shape. What SHACL does not say is how to treat a shape that refers to itself; this page applies the least-fixpoint reading, under which two people who only vouch for each other are never established as valid.</p>`,
+  differs: 'Same six rules in both documents. The visible differences are notation (cardinality suffixes against sh:minCount and sh:maxCount; a shape map outside the schema against sh:targetClass inside it) and one difference of meaning: how a self-referring shape is read.',
+  shexGloss: {
+    '1-3': 'Declares a prefix so the lines below can write schema:name instead of the full IRI.',
+    '4': '',
+    '5': 'Starts the shape ex:PersonShape. Up to the closing brace, each line is a triple constraint on the node being checked: a predicate, what its values may be, and how many.',
+    '6': 'The node must have rdf:type schema:Person. "a" is rdf:type; the square brackets list the allowed values. This demo checks only that schema:Person is among the types.',
+    '7': 'Exactly one schema:name, whose value must be an xsd:string literal. No cardinality suffix means exactly one.',
+    '8': 'At most one schema:email ("?" means zero or one), an xsd:string if present.',
+    '9': 'Any number of schema:knows ("*"), and each value must itself satisfy ex:PersonShape. This is the shape referring to itself.',
+    '10': 'End of the shape. Predicates not mentioned above are ignored: a ShEx shape is open unless marked CLOSED.',
+    '11': '',
+    '12-13': 'A ShEx schema does not select its own focus nodes; a shape map does. This one checks every node typed schema:Person against ex:PersonShape.',
+  },
+  shaclGloss: {
+    '1-4': 'Declares a prefix so the lines below can write sh:property instead of the full IRI.',
+    '5': '',
+    '6': 'Declares ex:PersonShape as a node shape: a set of constraints on a focus node.',
+    '7': 'Selects the focus nodes: every instance of schema:Person is validated against this shape. In SHACL the targeting is part of the shape.',
+    '8': 'The focus node must be an instance of schema:Person (by rdf:type, or a subclass; this demo has no subclass data).',
+    '9-11': 'A property shape for schema:name: each value must be an xsd:string (sh:datatype), and there must be at least one and at most one (sh:minCount, sh:maxCount). SHACL always writes counts out; without them any number is allowed.',
+    '12-14': 'A property shape for schema:email: values are xsd:string, at most one. No sh:minCount, so none is fine.',
+    '15-16': 'A property shape for schema:knows: every value must conform to ex:PersonShape (sh:node). No counts, so any number. SHACL leaves recursion through sh:node undefined; this page uses the least-fixpoint reading for its SHACL column. Properties not mentioned are ignored unless the shape says sh:closed true.',
+  },
   shapes: {
     Person: {
       label: 'ex:PersonShape', target: 'schema:Person',
@@ -375,6 +414,37 @@ ex:LineShape a sh:NodeShape ;
 ex:PersonShape a sh:NodeShape ;
   sh:property [ sh:path schema:name ;
     sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] .`,
+  shexBlurb: `<p>Three shapes. An order has exactly one order date, which must be an xsd:date; exactly one customer, who must be a valid person; and one or more line items ("+"), each a valid line. A line has exactly one quantity, an integer of at least 1 (MININCLUSIVE). A person, for this schema, is anything with exactly one string name.</p>
+<p>The shape map checks every node typed schema:Order. Lines and people are reached only through the order, so a bad line item or a nameless customer makes the order invalid rather than being reported on its own.</p>`,
+  shaclBlurb: `<p>Three node shapes, but only ex:OrderShape has a target (every instance of schema:Order); ex:LineShape and ex:PersonShape are applied to values through <code>sh:node</code>. An order has exactly one schema:orderDate typed xsd:date, exactly one schema:customer conforming to ex:PersonShape, and at least one schema:orderedItem conforming to ex:LineShape. A line has exactly one schema:orderQuantity, an integer with <code>sh:minInclusive 1</code>. A person has exactly one string name.</p>
+<p>The counts are explicit here where ShEx used a suffix: "+" became sh:minCount 1 with no sh:maxCount, and MININCLUSIVE became sh:minInclusive.</p>`,
+  differs: 'Same rules in both documents. ShEx writes "one or more" as a "+" suffix and the lower bound as MININCLUSIVE; SHACL writes sh:minCount 1 and sh:minInclusive 1. Nothing here depends on the reading of recursion, so the two columns agree.',
+  shexGloss: {
+    '1-3': 'Declares a prefix so the lines below can use short names.',
+    '4': '', '9': 'End of ex:OrderShape.', '10': '', '13': 'End of ex:LineShape.', '14': '', '17': 'End of ex:PersonShape.', '18': '',
+    '5': 'Starts the shape for an order.',
+    '6': 'Exactly one schema:orderDate, and its value must be an xsd:date literal.',
+    '7': 'Exactly one schema:customer, whose value must satisfy ex:PersonShape (defined below).',
+    '8': 'One or more schema:orderedItem ("+"), each of which must satisfy ex:LineShape.',
+    '11': 'Starts the shape for a line item.',
+    '12': 'Exactly one schema:orderQuantity: an xsd:integer whose value is at least 1. MININCLUSIVE is a facet on the value, like a datatype restriction.',
+    '15': 'Starts the shape for a person, as this schema needs it.',
+    '16': 'Exactly one schema:name, an xsd:string.',
+    '19': 'The shape map: every node typed schema:Order is checked against ex:OrderShape. Line items and people are only checked when an order points at them.',
+  },
+  shaclGloss: {
+    '1-4': 'Declares a prefix so the lines below can use short names.',
+    '5': '', '14': '', '19': '', '20': '',
+    '6': 'Declares ex:OrderShape as a node shape.',
+    '7': 'Selects every instance of schema:Order as a focus node.',
+    '8-9': 'schema:orderDate: values must be xsd:date, at least one and at most one.',
+    '10-11': 'schema:customer: the value must conform to ex:PersonShape (sh:node), and there must be exactly one.',
+    '12-13': 'schema:orderedItem: every value must conform to ex:LineShape, and there must be at least one. No sh:maxCount, so any number above that.',
+    '15': 'Declares ex:LineShape. It has no target: it is applied only to values, through sh:node above.',
+    '16-18': 'schema:orderQuantity: an xsd:integer of at least 1 (sh:minInclusive), exactly one of them.',
+    '21': 'Declares ex:PersonShape. No target here either.',
+    '22-23': 'schema:name: an xsd:string, exactly one.',
+  },
   shapes: {
     Order: {
       label: 'ex:OrderShape', target: 'schema:Order',
@@ -462,6 +532,36 @@ ex:BookShape a sh:NodeShape ;
   # same node: node identity, SHACL-only.
   # "one person author and one org author" as a
   # partition of schema:author: not expressible in SHACL.`,
+  shexBlurb: `<p>A book has exactly one ISBN (a string) and exactly one price (a decimal of at least 0). Its schema:author triples are then split: exactly one author must be a person, and optionally one more may be an organisation. The same predicate appears twice, and ShEx reads that as a partition of the author triples between the two constraints.</p>
+<p>The schema says nothing about sale prices, and cannot: ShEx has no way to compare two values of the same node. Both greyed lines mark things this demo does not evaluate.</p>`,
+  shaclBlurb: `<p>A book has exactly one schema:isbn (a string) and exactly one schema:price (a decimal of at least 0). If it has a schema:salePrice, that value must be less than the price: <code>sh:lessThan</code> compares the values of two properties of the same node.</p>
+<p>The schema says nothing about how authors divide between people and organisations, and cannot in general: SHACL has sh:qualifiedValueShape for counting values that match one shape, but no way to say that one predicate's triples are partitioned between several. Both greyed lines mark things this demo does not evaluate.</p>`,
+  differs: 'The ISBN and price rules match. Then each document says one thing the other cannot: ShEx partitions schema:author between two shapes, SHACL compares schema:salePrice with schema:price. The demo evaluates the shared part and greys out the rest.',
+  shexGloss: {
+    '1-3': 'Declares a prefix so the lines below can use short names.',
+    '4': '', '13': 'End of ex:BookShape.', '16': '',
+    '5': 'Starts the shape for a book.',
+    '6': 'Exactly one schema:isbn, an xsd:string.',
+    '7': 'Exactly one schema:price, an xsd:decimal whose value is at least 0.',
+    '8': 'One schema:author whose value satisfies ex:PersonShape.',
+    '9': 'And optionally ("?") one more schema:author whose value satisfies ex:OrgShape. With line 8 this partitions the author triples: ShEx-only.',
+    '10-11': 'Comment: why lines 8 and 9 together say something SHACL cannot.',
+    '12': 'Comment: a comparison between two values of the same node is not expressible in ShEx.',
+    '14': 'A person, for this schema, is anything typed schema:Person.',
+    '15': 'An organisation is anything typed schema:Organization.',
+    '17': 'The shape map: every node typed schema:Book is checked against ex:BookShape.',
+  },
+  shaclGloss: {
+    '1-4': 'Declares a prefix so the lines below can use short names.',
+    '5': '',
+    '6': 'Declares ex:BookShape as a node shape.',
+    '7': 'Selects every instance of schema:Book as a focus node.',
+    '8-9': 'schema:isbn: an xsd:string, exactly one.',
+    '10-12': 'schema:price: an xsd:decimal of at least 0 (sh:minInclusive), exactly one.',
+    '13-14': 'schema:salePrice: every value must be less than every value of schema:price on the same node (sh:lessThan). SHACL-only, and not evaluated here.',
+    '15-16': 'Comment: sh:lessThan needs to know that two paths start from the same node, which is what ShEx and the shared core cannot express.',
+    '17-18': 'Comment: the ShEx partition of schema:author has no SHACL counterpart.',
+  },
   shapes: {
     Book: {
       label: 'ex:BookShape', target: 'schema:Book',
@@ -489,9 +589,35 @@ function renderCode(el, text, hl = {}) {
 
 let ex, parsed, G, result;
 
+function glossFor(map, line) {
+  for (const [k, v] of Object.entries(map)) {
+    const [a, b] = k.split('-').map(Number);
+    if (line === a || (b !== undefined && line >= a && line <= b)) return v;
+  }
+  return undefined;
+}
+function wireGloss(preId, glossId, map, text) {
+  const pre = $(preId), box = $(glossId);
+  const lines = text.split('\n');
+  const showLine = (n) => {
+    const g = glossFor(map, n);
+    if (g === undefined) { box.innerHTML = `<span class="k">line ${n}</span> (no note for this line)`; return; }
+    box.innerHTML = g ? `<span class="k">line ${n}: ${esc(lines[n - 1].trim())}</span><br>${esc(g)}` : `<span class="k">line ${n}</span> blank line`;
+  };
+  pre.onmouseover = (e) => { const l = e.target.closest('.l'); if (l) showLine(Number(l.querySelector('.ln').textContent)); };
+  pre.onclick = pre.onmouseover;
+}
+
 function loadExample(key) {
   ex = examples[key];
   $('story').textContent = ex.story;
+  $('differs').textContent = ex.differs;
+  $('shexBlurb').innerHTML = ex.shexBlurb;
+  $('shaclBlurb').innerHTML = ex.shaclBlurb;
+  wireGloss('shex', 'shexGloss', ex.shexGloss, ex.shex);
+  wireGloss('shacl', 'shaclGloss', ex.shaclGloss, ex.shacl);
+  $('shexGloss').innerHTML = '<span class="k">hover or tap a line for what it means</span>';
+  $('shaclGloss').innerHTML = '<span class="k">hover or tap a line for what it means</span>';
   $('dataText').value = ex.data;
   $('editor').classList.add('hidden');
   validate(ex.data);
@@ -630,6 +756,7 @@ sel.addEventListener('change', () => loadExample(sel.value));
 $('edit').addEventListener('click', () => $('editor').classList.toggle('hidden'));
 $('apply').addEventListener('click', () => validate($('dataText').value));
 loadExample('people');
+window.__examples = examples; window.__glossFor = glossFor;
 </script>
 </body>
 </html>
