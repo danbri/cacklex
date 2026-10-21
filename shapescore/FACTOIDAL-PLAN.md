@@ -3,24 +3,34 @@
 Status: ShapesCore is a standalone Lake package on Factoidal's toolchain
 (Lean 4.33.1), with no dependencies. It is not yet a candidate to replace
 anything. This note says where it would go, what it would replace, and what
-has to be true first. Facts about Factoidal are from `danbri/factoidal` at
-commit `30154c0` (18 September 2026); I read the module headers and outlines,
-not every line, and built none of it.
+has to be true first.
+
+Facts about Factoidal were first taken from `danbri/factoidal` at commit
+`30154c0` (18 September 2026) and re-measured on 21 October 2026 against
+`danbri/factoidal-core` at commit `f89c991`, which is now the source
+repository (the F\* and Lean trees, tests, tools and skills; `danbri/factoidal`
+keeps the history and the issues, `danbri/factoidal-builds` the binaries).
+Paths below are under `factoidal-core/formal/lean4/`. I read the module
+headers and outlines, not every line, and built none of it.
 
 ## What is there now
 
 | | `L4Factoidal/SHACL/` | `L4Factoidal/ShEx/` |
 | --- | --- | --- |
-| Size | about 5,000 lines | about 3,600 lines |
+| Size | about 7,300 lines (11 files; was about 5,000 in September) | about 4,300 lines (13 files; was about 3,600) |
 | AST | `Path`, `Target`, `Constraint`, `Shape`, own `NodeKind` | `ShapeExpr`, `TripleExpr`, `NodeConstraint`, own `NodeKind` |
-| Recursion | structural on fuel; out of fuel yields no violations | `partial def`; re-entry on a (label, node) pair assumes true, i.e. GFP, with negation stratification unchecked |
-| Spec vs engine | `Spec.Conforms` relation and `validate` function; 45 theorems | engine only; two theorems, both lexer bounds |
+| Recursion | structural on fuel; out of fuel yields no violations | `partial def` (21 declarations across `Satisfies`, `Shapes`, `FromJson`, `Compact`); re-entry on a (label, node) pair assumes true, i.e. GFP, with negation stratification unchecked |
+| Spec vs engine | `Spec.Conforms` relation and `validate` function; 80 `theorem` declarations (52 in `ShaclTheorems.lean`, 11 in `DataIndex.lean`, 10 in `SparqlTheorems.lean`) | engine only; two theorems, both lexer bounds |
 | Harness | `l4shacl`, `l4shacl-rules`, `l4shacl-nodeexpr` | `l4shex` (1,182 validation entries), `l4shexc` |
-| CI suites | `shacl-core`, `shacl12-core`, `shacl12-node-expr`, `shacl12-rules`, `shacl-sparql`, `shacl12-sparql` | `shex`, `shex-negative-syntax` |
-| npm | served by the F* engine; Lean rejects | served by the F* engine; Lean rejects |
+| Suites | `tools/lean-scoreboard.sh` jobs `shacl-core10`, `shacl-core12`, `shacl-nodeexpr`, `shacl-rules`, `shacl-sparql10`, `shacl-sparql12`; CI lives in `danbri/factoidal-builds` | jobs `shex`, `shexc` |
+| npm | Lean serves it: wasm dispatch op `shaclValidate`. The `@factoidal/core` README's Lean conformance baseline (9 October 2026) reports SHACL 1.0 Core and SHACL-SPARQL 120 of 120, SHACL 1.2 Core 103 of 133 | Lean serves it: op `shexValidate`; same baseline, ShEx 2 validation and ShExC 1,624 of 1,624 |
 
-The two treatments share nothing: separate node-kind types, separate node
-tests, separate recursion strategies, and no statement relating them.
+Since September the Lean engines have taken over the npm surface, so the
+switch-over in gate 7 is a replacement behind existing ops, not a first
+appearance. The two treatments still share nothing: separate node-kind
+types, separate node tests, separate recursion strategies, and no statement
+relating them. `L4Factoidal/SHACL/Rules.lean`, which ARCHITECTURE.md reads,
+is byte-identical to the September version.
 
 ## Placement
 
@@ -80,12 +90,21 @@ A stage is done when its gate holds in CI, not before.
    core and for one open reading question. Until it is done the existing
    `satisfiesExtends` stays, behind the same front end.
 7. Switch-over. Wasm ops `shapesCompile`, `shapesCheck`, `shapesConforms`
-   on compiled-schema handles; `l4-core` serves SHACL and ShEx from Lean
-   for the first time; the old engines move to a differential-test role,
-   then go.
+   on compiled-schema handles; the existing `shaclValidate` and
+   `shexValidate` ops are re-pointed at the core; the old engines move to
+   a differential-test role, then go. Gate: the `@factoidal/core` suite
+   counts above do not drop.
 
 Replacement candidate means gates 1 to 5. Gate 6 can trail, since EXTENDS is
 not final in ShEx either.
+
+Besides the gates, a contribution must pass factoidal-core's three Lean
+audits: `tools/lean-hygiene-audit.py` (escape hatches and `#print axioms`),
+`tools/lean-tail-recursion-audit.py` (recursion not compiled to a loop) and
+`tools/lean-csimp-reach.py` (`@[csimp]` replacements reaching their callers).
+ShapesCore passed all three on 21 October 2026; see the repository README.
+Note that the hygiene audit's `partial def` baseline only goes down, so the
+ShEx engine's 21 `partial def`s are debt the replacement retires.
 
 ## What the merge buys
 

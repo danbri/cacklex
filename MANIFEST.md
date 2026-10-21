@@ -1,6 +1,6 @@
-# CackleX bundle, 19 September 2026
+# CackleX bundle, 19 September 2026 (updated 21 October 2026)
 
-Two projects from one working session.
+Two projects from one working session, plus a browser demo.
 
 ## shapescore/  (module ShapesCore, codename CackleX)
 
@@ -31,14 +31,30 @@ behaviours bound to AssemblyScript, wasm, REST, Docker, MCP and WebMCP.
 Not verified against the real thing: Docker (CLI stand-in only) and WebMCP
 (mock of document.modelContext only).
 
+## docs/
+
+Browser demo of the JavaScript mirror, served by GitHub Pages from this
+folder on `main` at https://danbri.github.io/cacklex/ (GitHub only offers
+`/` or `/docs` as the folder, which is why it is not `site/`).
+
+- index.html          the demo page
+- shapes-core.mjs     a copy of shapescore/js/shapes-core.mjs; refresh it
+                      with `cp` after changing the mirror. The workflow in
+                      .github/workflows/site.yml runs the mirror's tests and
+                      fails when the copy differs
+- .nojekyll           serve the folder as-is
+
 Build outputs and dependencies are excluded: .lake, node_modules, .cache.
 
-## Claude skills from Factoidal
+## Claude skills from factoidal-core
 
-`.claude/skills` is a relative symlink to `../../danbri/factoidal/skills`, so
-Factoidal's skills (factoidal-lean-basics, lean4-proof-patterns,
+`.claude/skills` is a relative symlink to `../../danbri/factoidal-core/skills`,
+so the Factoidal skills (factoidal-lean-basics, lean4-proof-patterns,
 lean4-performance, build-and-test, github-coauthor-policy, ...) load in a
-Claude Code session opened on this repo. It resolves when Factoidal is
+Claude Code session opened on this repo. It resolves when factoidal-core is
 cloned as a sibling: from the directory above this one,
 
-    git clone --depth 1 https://github.com/danbri/factoidal danbri/factoidal
+    git clone --depth 1 https://github.com/danbri/factoidal-core danbri/factoidal-core
+
+Before October 2026 the link pointed at `danbri/factoidal`, which has since
+been split; its `skills/` directory moved to factoidal-core.

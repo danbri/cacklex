@@ -8,6 +8,12 @@ read this round: the RML specification, Factoidal's Shardborough storage
 specification (`docs/shardborough-storage-spec.md`), SPARQL 1.2. Everything
 said about those three below is argument, to be checked against them.
 
+Update, 21 October 2026: Factoidal's source now lives in
+`danbri/factoidal-core`. Its `formal/lean4/L4Factoidal/SHACL/Rules.lean` at
+commit `f89c991` is byte-identical to the file read here, so [FRules] stands
+unchanged. The storage specification is still `docs/shardborough-storage-spec.md`
+there, still Alpha Draft 0.3; it was not read for this update.
+
 ## 1. What the SHACL 1.2 forward chainer is
 
 [Rules12] section 5.4: stratify the rule set; for each layer, repeat "evaluate

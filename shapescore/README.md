@@ -1,6 +1,6 @@
 # ShapesCore
 
-Module name ShapesCore; project codename CackleX. Planned as a contribution to the Factoidal repo (see FACTOIDAL-PLAN.md).
+Module name ShapesCore; project codename CackleX. Planned as a contribution to danbri/factoidal-core (see FACTOIDAL-PLAN.md).
 
 A Lean 4 core for shape languages, built on Ahmetaj et al., "Common
 Foundations for Recursive Shape Languages" (KR 2026), with the SHACL and ShEx
@@ -9,7 +9,7 @@ current ShEx are the targets; neither language is the foundation.
 
 Lean 4.33.1, no dependencies (no Mathlib). `lake build` compiles everything;
 `lake env lean Audit.lean` prints the axioms each main theorem uses. There is
-no `sorry`, `partial`, `axiom` or `native_decide`. 2277 lines, 107 theorems.
+no `sorry`, `partial`, `axiom` or `native_decide`. About 2295 lines, 107 theorems.
 Paper summaries are in PAPERS.md. The route into Factoidal, with gates, is in FACTOIDAL-PLAN.md. DESIGN-NOTES.md argues where SHACL and ShEx actually differ and what follows for the core. ARCHITECTURE.md describes the generic solver and how rules, paths, mappings, views and indices would use it.
 
 ## Design

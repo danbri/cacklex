@@ -7,6 +7,13 @@ and theorem counts only) and the abstract of `docs/shardborough-storage-spec.md`
 (Alpha Draft 0.3, 1 September 2026). I read no Factoidal proof and none of the
 IBK design notes; fit with those formats is argument until checked.
 
+Update, 21 October 2026: the source is now `danbri/factoidal-core`. At its
+commit `f89c991`, counting lines that begin with `theorem`, SPARQL has 104
+files and 737 theorems (September: 64 and 483) and Storage 76 files and 687
+theorems. The counts below are the September ones and are left as the
+record of what was surveyed; the bridge in item 4 of the closing list would
+compose with the larger set.
+
 What the survey showed: SPARQL has 64 files and 483 theorems, Storage 60 and
 467, Unified 20 and 776, RDFS 215, OWL 486, RDF 266. SHACL has 45, ShEx 2, RML
 0. The shapes and mapping layers are the ones with nothing to connect them to
