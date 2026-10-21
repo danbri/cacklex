@@ -73,14 +73,62 @@
   pre.code .l:hover { outline: 1px solid var(--acc); }
   .differs { margin: 10px 0 0; }
   .hidden { display: none; }
+
+  .howto { margin: 10px 0 0; }
+  .howto summary { cursor: pointer; color: var(--acc); font-weight: 600; }
+  .howto ul { margin: 6px 0 0; padding-left: 20px; }
+  .howto li { margin: 4px 0; }
+  .rules h3 { color: var(--fg); font-size: 1rem; margin: 10px 0 4px; }
+  .rules ul { margin: 0 0 6px; padding-left: 20px; }
+  .rules li { margin: 3px 0; }
+  .rules .aside { color: var(--muted); font-size: 0.9rem; }
+  .chip { display: inline-block; font-size: 0.72rem; padding: 1px 7px; border-radius: 10px; margin-left: 6px; vertical-align: middle; border: 1px solid var(--line); color: var(--muted); }
+  .chip.only { border-color: var(--warn); color: var(--warn); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 10px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: default; }
+  .card.target { cursor: pointer; }
+  .card.target:hover { border-color: var(--acc); }
+  .card.sel { border-color: var(--acc); box-shadow: 0 0 0 2px var(--hl-schema); }
+  .card .name { font-weight: 700; font-size: 1.02rem; }
+  .card .kind { color: var(--muted); font-size: 0.85rem; margin-left: 6px; }
+  .card .props { list-style: none; margin: 6px 0 0; padding: 0; font-size: 0.92rem; }
+  .card .props li { padding: 1px 4px; border-radius: 3px; }
+  .card .props li.hd { background: var(--hl-data); }
+  .card .props .p { color: var(--muted); }
+  .card .verdict { margin-top: 8px; font-size: 0.92rem; }
+  .card .muted { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-weight: 600; font-size: 0.85rem; }
+  .badge.yes { background: color-mix(in srgb, var(--yes) 16%, transparent); color: var(--yes); }
+  .badge.no { background: color-mix(in srgb, var(--no) 16%, transparent); color: var(--no); }
+  .badge.split { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .why .lines { color: var(--muted); font-size: 0.85rem; }
+  .readings { margin: 8px 0 0; }
+  .readings summary { cursor: pointer; color: var(--acc); font-weight: 600; }
+  .readings p { margin: 6px 0; }
+  .summary { margin: 12px 0 0; }
+  .summary summary { cursor: pointer; color: var(--acc); font-weight: 600; }
+  th small { display: block; font-weight: 400; color: var(--muted); }
 </style>
 </head>
 <body>
 <main>
   <h1>Shapes, two ways</h1>
-  <p class="lede">The same rules written as ShEx and as SHACL, checked against Turtle data in your browser.
-  Both schemas compile to one shared core. Click a verdict to see which triples and which
-  schema lines decided it.</p>
+  <p class="lede">A <b>shape</b> is a checklist for one kind of thing in a dataset: "a person must have a
+  name, may have one email, and may know other people". Two languages exist for writing shapes,
+  <b>ShEx</b> and <b>SHACL</b>. This page writes the same checklist in both, runs it over a small
+  dataset in your browser, and explains every pass and fail in plain words.</p>
+  <details class="howto"><summary>New to this? How to read the page</summary>
+    <ul>
+      <li><b>The data</b> is a list of facts, each one "thing, property, value": Alice, name, "Alice Adams".
+        Every thing gets a card below. The raw text form, called Turtle, is further down with the code.</li>
+      <li><b>The rules</b> are listed in plain English first. The ShEx and SHACL versions of the same rules
+        are further down, line by line, with a note for every line.</li>
+      <li><b>Verdicts</b>: each thing the rules apply to passes or fails, with the reasons. Click a card to see
+        which facts and which lines of the rules decided it.</li>
+      <li>Sometimes the two languages <b>disagree</b>. When they do, the page says why. It is always about a
+        rule that refers back to itself, and data that goes round in a circle.</li>
+    </ul>
+  </details>
 
   <div class="bar">
     <div>
@@ -90,8 +138,35 @@
     <div style="flex:0 0 auto"><button id="edit" class="ghost">Edit the data</button></div>
   </div>
   <p id="story" class="lede"></p>
-  <p id="differs" class="differs"></p>
 
+  <h2>The rules</h2>
+  <div class="note rules" id="rules"></div>
+
+  <h2>The data, with verdicts</h2>
+  <p class="lede">One card per thing in the data. Cards with a badge are the ones the rules apply to; click one
+  to see why it passed or failed.</p>
+  <div class="cards" id="cards"></div>
+  <div id="why"></div>
+  <details class="readings" id="readings"><summary>Why can one thing get two different answers?</summary>
+    <p>Only when a rule refers back to itself. "Everyone a person knows must be a valid person" asks about
+    other people, and their validity may in turn depend on the first person. If Alice and Bob each know only
+    the other, nothing in the data breaks the rules for either of them, but nothing settles the question
+    either.</p>
+    <p><b>ShEx gives the benefit of the doubt</b>: if nothing contradicts the rules, the thing passes.
+    <b>SHACL, as this page reads it, insists on proof</b>: a thing passes only if that can be established from
+    things already known to pass, so a circle of mutual vouching fails. The SHACL specification has not yet
+    settled this question; the "must be proven" reading is the one its authors are expected to adopt.</p>
+    <p class="lede">For the technically minded: these are the greatest and least fixpoints of the same
+    equations. The page computes both from one shared core, and the Lean proofs behind it show the two
+    readings are duals of each other.</p>
+  </details>
+  <details class="summary"><summary>Summary table</summary><div id="out"></div></details>
+
+  <h2>The same rules as code</h2>
+  <p class="lede">The schemas as a ShEx or SHACL author would write them, with the data in Turtle. Hover or tap
+  a line for what it means. When you click a card above, the facts and the rule lines that decided its verdict
+  are highlighted here.</p>
+  <p id="differs" class="differs lede"></p>
   <div class="grid3">
     <div class="panel">
       <h3>Data <span class="tag">Turtle</span></h3>
@@ -116,14 +191,7 @@
     </div>
   </div>
 
-  <h2>Verdicts</h2>
-  <p class="lede">Targets are the nodes the schema selects (SHACL <code>sh:targetClass</code>, or the ShEx shape map).
-  Two columns because recursive shapes have two defensible readings: least fixpoint, which SHACL
-  is expected to adopt, and greatest fixpoint, which ShEx uses.</p>
-  <div id="out"></div>
-  <div id="why"></div>
-
-  <h2>Common core, and beyond it</h2>
+  <h2>What the two languages share</h2>
   <div class="note" id="core"></div>
 
   <footer>Runs the JavaScript mirror of the <a href="https://github.com/danbri/cacklex">ShapesCore</a> Lean core.
@@ -244,7 +312,7 @@ const examples = {};
 
 examples.people = {
   title: 'People and who they know',
-  story: 'A contact list. A person needs exactly one name, at most one email, and may know other people, who must themselves be valid people. Alice and Bob know each other, which is where the two readings of recursion part company.',
+  story: 'A contact list. A person needs exactly one name, at most one email, and may know other people, who must themselves be valid people. Alice and Bob know each other, and that circle is where ShEx and SHACL part company.',
   data: `@prefix schema: <http://schema.org/> .
 @prefix ex: <http://example.org/> .
 
@@ -331,14 +399,14 @@ ex:PersonShape a sh:NodeShape ;
   },
   shapes: {
     Person: {
-      label: 'ex:PersonShape', target: 'schema:Person',
+      label: 'ex:PersonShape', plain: 'Person', target: 'schema:Person',
       constraints: [
-        c('type', 'is typed schema:Person', some('rdf:type', atom('is schema:Person')), [6], [8]),
-        c('name1', 'has exactly one schema:name', exactlyOne('schema:name'), [7], [9, 11]),
-        c('nameStr', 'every schema:name is an xsd:string', every('schema:name', atom('xsd:string')), [7], [9, 10]),
-        c('email1', 'has at most one schema:email', atMostOne('schema:email'), [8], [12, 14]),
-        c('emailStr', 'every schema:email is an xsd:string', every('schema:email', atom('xsd:string')), [8], [12, 13]),
-        c('knows', 'everyone in schema:knows is a valid ex:PersonShape', every('schema:knows', ref('Person')), [9], [15, 16]),
+        c('type', 'is a Person', some('rdf:type', atom('is schema:Person')), [6], [8]),
+        c('name1', 'has exactly one name', exactlyOne('schema:name'), [7], [9, 11]),
+        c('nameStr', 'the name is text (an xsd:string)', every('schema:name', atom('xsd:string')), [7], [9, 10]),
+        c('email1', 'has at most one email', atMostOne('schema:email'), [8], [12, 14]),
+        c('emailStr', 'the email is text', every('schema:email', atom('xsd:string')), [8], [12, 13]),
+        c('knows', 'everyone they know is themselves a valid Person', every('schema:knows', ref('Person')), [9], [15, 16]),
       ],
     },
   },
@@ -346,7 +414,7 @@ ex:PersonShape a sh:NodeShape ;
 
 examples.orders = {
   title: 'Orders and the customers who placed them',
-  story: 'A small shop. Every order needs a date, one or more line items with a positive quantity, and a customer who is a valid person. Order 3 was placed by a customer record with no name, so the order fails because the customer does.',
+  story: 'A small shop. Every order needs a date, one or more line items with a positive quantity, and a customer who is a valid person. Order 3 was placed by a customer record with no name, so the order fails because its customer does.',
   data: `@prefix schema: <http://schema.org/> .
 @prefix ex: <http://example.org/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -447,26 +515,26 @@ ex:PersonShape a sh:NodeShape ;
   },
   shapes: {
     Order: {
-      label: 'ex:OrderShape', target: 'schema:Order',
+      label: 'ex:OrderShape', plain: 'Order', target: 'schema:Order',
       constraints: [
-        c('date1', 'has exactly one schema:orderDate', exactlyOne('schema:orderDate'), [6], [8, 9]),
-        c('dateT', 'the schema:orderDate is an xsd:date', every('schema:orderDate', atom('xsd:date')), [6], [8, 9]),
-        c('cust1', 'has exactly one schema:customer', exactlyOne('schema:customer'), [7], [10, 11]),
-        c('custP', 'the schema:customer is a valid ex:PersonShape', every('schema:customer', ref('Person')), [7], [10, 11]),
-        c('items', 'has at least one schema:orderedItem, each a valid ex:LineShape', and(some('schema:orderedItem', top), every('schema:orderedItem', ref('Line'))), [8], [12, 13]),
+        c('date1', 'has exactly one order date', exactlyOne('schema:orderDate'), [6], [8, 9]),
+        c('dateT', 'the order date is a real date (xsd:date), not free text', every('schema:orderDate', atom('xsd:date')), [6], [8, 9]),
+        c('cust1', 'has exactly one customer', exactlyOne('schema:customer'), [7], [10, 11]),
+        c('custP', 'the customer is a valid Person', every('schema:customer', ref('Person')), [7], [10, 11]),
+        c('items', 'has at least one line item, and each one is a valid Line item', and(some('schema:orderedItem', top), every('schema:orderedItem', ref('Line'))), [8], [12, 13]),
       ],
     },
     Line: {
-      label: 'ex:LineShape', target: null,
+      label: 'ex:LineShape', plain: 'Line item', target: null,
       constraints: [
-        c('qty1', 'has exactly one schema:orderQuantity', exactlyOne('schema:orderQuantity'), [12], [16, 18]),
-        c('qtyT', 'the quantity is an xsd:integer of at least 1', every('schema:orderQuantity', and(atom('xsd:integer'), atom('positive'))), [12], [16, 17]),
+        c('qty1', 'has exactly one quantity', exactlyOne('schema:orderQuantity'), [12], [16, 18]),
+        c('qtyT', 'the quantity is a whole number of at least 1', every('schema:orderQuantity', and(atom('xsd:integer'), atom('positive'))), [12], [16, 17]),
       ],
     },
     Person: {
-      label: 'ex:PersonShape', target: null,
+      label: 'ex:PersonShape', plain: 'Person', target: null,
       constraints: [
-        c('name1', 'has exactly one schema:name, an xsd:string', and(exactlyOne('schema:name'), every('schema:name', atom('xsd:string'))), [16], [21, 22]),
+        c('name1', 'has exactly one name, which is text', and(exactlyOne('schema:name'), every('schema:name', atom('xsd:string'))), [16], [21, 22]),
       ],
     },
   },
@@ -474,7 +542,7 @@ ex:PersonShape a sh:NodeShape ;
 
 examples.books = {
   title: 'Books: where the two languages stop agreeing',
-  story: 'A catalogue. The ISBN and price rules are in the shared core and are checked. Two rules are not: SHACL can say the sale price must be less than the list price, and ShEx can say the same predicate holds one person and one organisation. Each is shown greyed out on the side that cannot express it, and neither is evaluated here.',
+  story: 'A catalogue. The ISBN and price rules can be said in both languages, and are checked. Two rules cannot: SHACL can say the sale price must be less than the list price, and ShEx can say the authors are one person plus at most one organisation. Each is shown but not checked, and greyed out in the code of the language that cannot say it.',
   data: `@prefix schema: <http://schema.org/> .
 @prefix ex: <http://example.org/> .
 
@@ -564,13 +632,13 @@ ex:BookShape a sh:NodeShape ;
   },
   shapes: {
     Book: {
-      label: 'ex:BookShape', target: 'schema:Book',
+      label: 'ex:BookShape', plain: 'Book', target: 'schema:Book',
       constraints: [
-        c('isbn1', 'has exactly one schema:isbn, an xsd:string', and(exactlyOne('schema:isbn'), every('schema:isbn', atom('xsd:string'))), [6], [8, 9]),
-        c('price', 'has exactly one schema:price, a decimal of at least 0', and(exactlyOne('schema:price'), every('schema:price', and(atom('xsd:decimal'), atom('positive')))), [7], [10, 12]),
-        c('authors', 'schema:author is partitioned into one person and at most one organisation', null, [8, 9, 10, 11], [17, 18],
+        c('isbn1', 'has exactly one ISBN, which is text', and(exactlyOne('schema:isbn'), every('schema:isbn', atom('xsd:string'))), [6], [8, 9]),
+        c('price', 'has exactly one price, a number of at least 0', and(exactlyOne('schema:price'), every('schema:price', and(atom('xsd:decimal'), atom('positive')))), [7], [10, 12]),
+        c('authors', 'the authors are one person plus, optionally, one organisation', null, [8, 9, 10, 11], [17, 18],
           'ShEx-only: the same predicate appears in two triple constraints, and the triples must be split between them. SHACL has sh:qualifiedValueShape for the single-predicate case, but not the general partition, and this demo does not evaluate it.'),
-        c('sale', 'schema:salePrice is less than schema:price', null, [12], [13, 14, 15, 16],
+        c('sale', 'the sale price, if any, is less than the price', null, [12], [13, 14, 15, 16],
           'SHACL-only: sh:lessThan compares the values reached by two paths from the same node. ShEx cannot tell whether two triples end at the same or related nodes, and the shared core has no such comparison, so this is not evaluated here.'),
       ],
     },
@@ -580,6 +648,12 @@ ex:BookShape a sh:NodeShape ;
 // ---------- rendering ----------
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+const localName = (v) => v.slice(1, -1).replace(/^.*[\/#]/, '');
+const plainVal = (v) => isIri(v) ? localName(v) : isLit(v) ? `"${litLex(v)}"` : v;
+const plainPred = (p) => p === RDF_TYPE ? 'is a' : localName(p);
+const plainShape = (name) => ex.shapes[name].plain || ex.shapes[name].label;
+const withArticle = (w) => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+const sideOf = (con) => !con.outside ? null : con.outside.startsWith('ShEx') ? 'ShEx only' : 'SHACL only';
 function renderCode(el, text, hl = {}) {
   el.innerHTML = text.split('\n').map((line, i) => {
     const cls = hl[i + 1] ? ` ${hl[i + 1]}` : '';
@@ -620,7 +694,26 @@ function loadExample(key) {
   $('shaclGloss').innerHTML = '<span class="k">hover or tap a line for what it means</span>';
   $('dataText').value = ex.data;
   $('editor').classList.add('hidden');
+  renderRules();
   validate(ex.data);
+}
+
+function renderRules() {
+  let h = '';
+  for (const [name, sh] of Object.entries(ex.shapes)) {
+    const who = sh.target
+      ? `checked for every thing that is ${withArticle(localName(P(sh.target)))}`
+      : 'only checked when another rule points at a thing';
+    h += `<h3>${esc(withArticle(plainShape(name)).replace(/^./, (c) => c.toUpperCase()))} <span class="chip">${esc(who)}</span></h3><ul>`;
+    for (const con of sh.constraints) {
+      const side = sideOf(con);
+      h += side
+        ? `<li>${esc(con.text)} <span class="chip only">${side}</span> <span class="aside">The other language cannot say this, so this page shows it but does not check it.</span></li>`
+        : `<li>${esc(con.text)}</li>`;
+    }
+    h += '</ul>';
+  }
+  $('rules').innerHTML = h;
 }
 
 function validate(dataText) {
@@ -640,35 +733,81 @@ function validate(dataText) {
     const typeIri = P(sh.target);
     for (const v of nodes) if (parsed.triples.some((t) => t.s === v && t.p === RDF_TYPE && t.o === typeIri)) targets.push({ shape: name, node: v });
   }
-  result = { C, L, U, targets, nodes };
+  const indirect = {};
+  for (const t of targets) for (const con of ex.shapes[t.shape].constraints) {
+    if (!con.expr) continue;
+    const preds = new Set(), refs = [];
+    (function walk(f) { if (!f) return; if (f.st) preds.add(f.st.p); if (f.t === 'ref') refs.push(f.s); if (f.a) walk(f.a); if (f.b) walk(f.b); if (f.phi) walk(f.phi); })(con.expr);
+    for (const shape of refs) for (const x of parsed.triples) if (x.s === t.node && preds.has(x.p) && ex.shapes[shape]) {
+      (indirect[x.o] ||= []).push({ shape, via: t });
+    }
+  }
+  result = { C, L, U, targets, nodes, indirect };
   renderAll();
   const firstFail = targets.find((t) => !holds(U, t.shape, t.node) || !holds(L, t.shape, t.node));
   select(firstFail ? targets.indexOf(firstFail) : 0);
 }
 
+const badge = (ok) => `<span class="badge ${ok ? 'yes' : 'no'}">${ok ? 'passes' : 'fails'}</span>`;
+function verdictHtml(t) {
+  const l = holds(result.L, t.shape, t.node), u = holds(result.U, t.shape, t.node);
+  const asA = `${esc(withArticle(plainShape(t.shape)).replace(/^/, 'as '))}${t.via ? `, because ${esc(plainVal(t.via.node))} points at it` : ''}`;
+  if (l === u) {
+    if (l) return `${badge(l)} ${asA}`;
+    const first = explain(t, result.U)[0];
+    const why = first ? `<br><span class="lede">Broken rule: ${esc(first.con.text)}${explain(t, result.U).length > 1 ? ', and more' : ''}.</span>` : '';
+    return `${badge(l)} ${asA}${why}`;
+  }
+  return `<span class="badge split">the languages disagree</span> ${asA}<br><span class="lede">ShEx: ${u ? 'passes' : 'fails'} (benefit of the doubt). SHACL: ${l ? 'passes' : 'fails'} (must be proven).</span>`;
+}
+
+function renderCards(hlData = {}) {
+  const subjects = [];
+  for (const t of parsed.triples) if (!subjects.includes(t.s)) subjects.push(t.s);
+  let h = '';
+  for (const sIri of subjects) {
+    const own = parsed.triples.filter((t) => t.s === sIri);
+    const kinds = own.filter((t) => t.p === RDF_TYPE).map((t) => localName(t.o));
+    const props = own.filter((t) => t.p !== RDF_TYPE);
+    const ts = result.targets.map((t, i) => ({ ...t, i })).filter((t) => t.node === sIri);
+    const cls = ['card', ts.length ? 'target' : ''].join(' ');
+    h += `<div class="${cls}" data-i="${ts.length ? ts[0].i : ''}">`;
+    h += `<div><span class="name">${esc(plainVal(sIri))}</span>${kinds.length ? `<span class="kind">a ${esc(kinds.join(', '))}</span>` : ''}</div>`;
+    h += '<ul class="props">' + props.map((t) => `<li class="${hlData[t.ln + 1] ? 'hd' : ''}"><span class="p">${esc(plainPred(t.p))}:</span> ${esc(plainVal(t.o))}</li>`).join('') + '</ul>';
+    const ind = (result.indirect[sIri] || []).filter((k, j, arr) => arr.findIndex((m) => m.shape === k.shape) === j && !ts.some((t) => t.shape === k.shape));
+    const parts = ts.map(verdictHtml).concat(ind.map((k) => verdictHtml({ shape: k.shape, node: sIri, via: k.via })));
+    h += parts.length ? `<div class="verdict">${parts.join('<br>')}</div>` : '<div class="muted">no rule applies to this</div>';
+    h += '</div>';
+  }
+  $('cards').innerHTML = h;
+  for (const card of $('cards').querySelectorAll('.card.target')) card.addEventListener('click', () => select(Number(card.dataset.i)));
+}
+
 function renderAll() {
   const { L, U, targets } = result;
-  const mark = (b) => `<span class="${b ? 'yes' : 'no'}">${b ? 'valid' : 'invalid'}</span>`;
+  renderCards();
   const agree = targets.every((t) => holds(L, t.shape, t.node) === holds(U, t.shape, t.node));
-  let h = `<p>${targets.length} target node${targets.length === 1 ? '' : 's'}. ${agree
-    ? 'Both readings agree on every target, so any other reading of recursion agrees too.'
-    : 'The readings differ on some targets: those are the nodes whose validity depends on a cycle.'}</p>`;
-  h += '<div class="tbl"><table><tr><th>node</th><th>shape</th><th>least fixpoint (SHACL)</th><th>greatest fixpoint (ShEx)</th></tr>';
+  $('readings').open = !agree;
+  let h = `<p>${targets.length} thing${targets.length === 1 ? '' : 's'} checked. ${agree
+    ? 'ShEx and SHACL agree on every one of them.'
+    : 'ShEx and SHACL disagree on some of them: the ones whose result depends on a circle in the data.'}</p>`;
+  h += '<div class="tbl"><table><tr><th>thing</th><th>checked as</th><th>SHACL reading<small>must be proven</small></th><th>ShEx reading<small>benefit of the doubt</small></th></tr>';
   targets.forEach((t, i) => {
-    h += `<tr class="row" data-i="${i}"><td class="k">${show(t.node)}</td><td class="k">${ex.shapes[t.shape].label}</td><td>${mark(holds(L, t.shape, t.node))}</td><td>${mark(holds(U, t.shape, t.node))}</td></tr>`;
+    h += `<tr class="row" data-i="${i}"><td class="k">${esc(plainVal(t.node))}</td><td>${esc(plainShape(t.shape))}</td><td>${badge(holds(L, t.shape, t.node))}</td><td>${badge(holds(U, t.shape, t.node))}</td></tr>`;
   });
   h += '</table></div>';
   $('out').innerHTML = h;
   for (const row of $('out').querySelectorAll('tr.row')) row.addEventListener('click', () => select(Number(row.dataset.i)));
 
-  // the core summary
-  let k = '<p>Every constraint is compiled to the shared core: node tests, and/or, shape references, and counting over one predicate. What each schema line became:</p><ul class="why">';
-  for (const [name, sh] of Object.entries(ex.shapes)) for (const con of sh.constraints) {
-    k += con.outside
-      ? `<li><span class="warn">outside the core</span> ${ex.shapes[name].label}: ${esc(con.text)}. ${esc(con.outside)}</li>`
-      : `<li>${ex.shapes[name].label}: ${esc(con.text)}</li>`;
-  }
-  k += '</ul>';
+  const outside = [];
+  for (const [name, sh] of Object.entries(ex.shapes)) for (const con of sh.constraints) if (con.outside) outside.push({ name, con });
+  let k = `<p>Every rule above that both languages can express was turned into the same small set of building blocks:
+    tests on a single value ("is text", "is a Person"), and/or, "must satisfy these other rules", and counting how many
+    values a property has. Both ShEx and SHACL reduce to those blocks, which is why one checker can run both.</p>`;
+  k += outside.length
+    ? `<p>What does not reduce to them:</p><ul class="why">${outside.map(({ name, con }) =>
+        `<li><b>${esc(plainShape(name))}: ${esc(con.text)}.</b> <span class="chip only">${sideOf(con)}</span> ${esc(con.outside)}</li>`).join('')}</ul>`
+    : '<p>Every rule in this example is inside that shared set, so the two documents mean exactly the same thing.</p>';
   $('core').innerHTML = k;
 }
 
@@ -683,7 +822,6 @@ function explain(t, A, depth = 0) {
     const preds = new Set();
     (function walk(f) { if (!f) return; if (f.st) preds.add(f.st.p); if (f.a) walk(f.a); if (f.b) walk(f.b); if (f.phi) walk(f.phi); })(con.expr);
     const triples = parsed.triples.filter((x) => x.s === t.node && preds.has(x.p));
-    // if the constraint refers to another shape, say which successors fail it and why
     const refs = []; (function walk(f) { if (!f) return; if (f.t === 'ref') refs.push(f.s); if (f.a) walk(f.a); if (f.b) walk(f.b); if (f.phi) walk(f.phi); })(con.expr);
     const nested = [];
     if (depth === 0) for (const shape of refs) for (const x of triples) {
@@ -702,7 +840,6 @@ function select(i) {
   const failsL = explain(t, result.L), failsU = explain(t, result.U);
   const sh = ex.shapes[t.shape];
   const hlData = {}, hlShex = {}, hlShacl = {};
-  // grey out constraints the core cannot express
   for (const con of sh.constraints) if (con.outside) { con.shex.forEach((n) => hlShex[n] = 'out'); con.shacl.forEach((n) => hlShacl[n] = 'out'); }
   const fails = failsU.length ? failsU : failsL;
   const subjectLines = parsed.triples.filter((x) => x.s === t.node).map((x) => x.ln + 1);
@@ -720,31 +857,37 @@ function select(i) {
   renderCode($('data'), $('dataText').value, hlData);
   renderCode($('shex'), ex.shex, hlShex);
   renderCode($('shacl'), ex.shacl, hlShacl);
+  renderCards(hlData);
+  for (const card of $('cards').querySelectorAll('.card.target')) card.classList.toggle('sel', Number(card.dataset.i) === i);
 
   const validU = holds(result.U, t.shape, t.node), validL = holds(result.L, t.shape, t.node);
-  let h = `<h3 style="margin-top:12px">${esc(show(t.node))} against ${esc(sh.label)}</h3>`;
+  const who = plainVal(t.node), what = plainShape(t.shape);
+  let h = `<h3 style="margin-top:12px">${esc(who)}, checked as a ${esc(what)}</h3>`;
+  const found = (triples, preds, node) => triples.length
+    ? `In the data: ${triples.map((x) => `${plainPred(x.p)} ${plainVal(x.o)}`).join('; ')} (line${triples.length > 1 ? 's' : ''} ${[...new Set(triples.map((x) => x.ln + 1))].join(', ')} of the data).`
+    : `In the data: ${node} has no ${[...preds].map(plainPred).join(' or ')} at all.`;
+  const lines = (con) => `<span class="lines">(ShEx line${con.shex.length > 1 ? 's' : ''} ${con.shex.join(', ')}; SHACL line${con.shacl.length > 1 ? 's' : ''} ${con.shacl.join(', ')})</span>`;
   const describe = (f) => {
-    const what = f.triples.length
-      ? `Found: ${f.triples.map((x) => `${show(x.p)} ${show(x.o)}`).join('; ')} (data line${f.triples.length > 1 ? 's' : ''} ${[...new Set(f.triples.map((x) => x.ln + 1))].join(', ')}).`
-      : `Found nothing for ${[...f.preds].map(show).join(', ')} on this node.`;
-    const lines = (con) => `ShEx line${con.shex.length > 1 ? 's' : ''} ${con.shex.join(', ')}; SHACL line${con.shacl.length > 1 ? 's' : ''} ${con.shacl.join(', ')}.`;
-    let li = `<li><span class="no">fails</span> "${esc(f.con.text)}". ${esc(what)} ${lines(f.con)}`;
+    let li = `<li><span class="no">Broken rule:</span> ${esc(f.con.text)}. ${esc(found(f.triples, f.preds, who))} ${lines(f.con)}`;
     for (const n of f.nested) {
-      const label = ex.shapes[n.shape].label;
+      const nn = plainVal(n.node), nl = plainShape(n.shape);
       li += n.fails.length
-        ? `<ul class="why">${n.fails.map((g) => { const got = g.triples.length ? `Found: ${g.triples.map((x) => `${show(x.p)} ${show(x.o)}`).join('; ')} (data line${g.triples.length > 1 ? 's' : ''} ${[...new Set(g.triples.map((x) => x.ln + 1))].join(', ')}).` : `Found nothing for ${[...g.preds].map(show).join(', ')} on ${show(n.node)}.`; return `<li>${esc(show(n.node))} is not a valid ${esc(label)}: "${esc(g.con.text)}". ${esc(got)} ${lines(g.con)}</li>`; }).join('')}</ul>`
-        : `<ul class="why"><li>${esc(show(n.node))} is not a valid ${esc(label)} under this reading, though none of its own constraints fails on its own: its validity depends on a cycle.</li></ul>`;
+        ? `<ul class="why">${n.fails.map((g) => `<li>${esc(nn)} is not a valid ${esc(nl)}, because of the rule "${esc(g.con.text)}". ${esc(found(g.triples, g.preds, nn))} ${lines(g.con)}</li>`).join('')}</ul>`
+        : `<ul class="why"><li>${esc(nn)} is not a valid ${esc(nl)} under this reading, although none of its own facts breaks a rule: its result depends on a circle.</li></ul>`;
     }
     return li + '</li>';
   };
   if (validU && validL) {
-    h += `<p><span class="yes">valid</span> under both readings. Every constraint of ${esc(sh.label)} holds; the node's triples are highlighted.</p>`;
+    h += `<p>${badge(true)} in both languages. Every rule for a ${esc(what)} holds. ${esc(who)}'s facts are highlighted on the card and in the Turtle below.</p>`;
   } else if (validU && !validL) {
-    h += `<p><span class="yes">valid</span> under the greatest fixpoint, <span class="no">invalid</span> under the least. Under the least fixpoint a node is valid only if that can be established from nodes already known valid, and here the reasons run in a circle:</p><ul class="why">${failsL.map(describe).join('')}</ul><p>ShEx accepts the circle because nothing in the data contradicts the shapes. A least-fixpoint validator rejects it because nothing in the data establishes them either. The data and the schemas are identical; only the reading of recursion differs.</p>`;
+    h += `<p><span class="badge split">the languages disagree</span> ShEx says ${esc(who)} passes; SHACL, read strictly, says ${esc(who)} fails.</p>
+      <p>A rule for a ${esc(what)} points back at the ${esc(what)} rules themselves, and the data goes round in a circle. Read "must be proven", it comes out like this:</p>
+      <ul class="why">${failsL.map(describe).join('')}</ul>
+      <p>Nothing in the data breaks the rules for anyone in the circle, but nothing settles them either. ShEx gives the benefit of the doubt, so everyone in the circle passes. The strict reading of SHACL wants proof from outside the circle, finds none, and fails them all. Same facts, same rules; the only difference is what to do with a circle.</p>`;
   } else {
-    h += `<ul class="why">${fails.map(describe).join('')}</ul>`;
+    h += `<p>${badge(false)} in both languages, for ${fails.length === 1 ? 'this reason' : 'these reasons'}:</p><ul class="why">${fails.map(describe).join('')}</ul>`;
     const refFails = fails.filter((f) => [...(function* g(f) { if (f.t === 'ref') yield f.s; if (f.a) yield* g(f.a); if (f.b) yield* g(f.b); if (f.phi) yield* g(f.phi); })(f.con.expr)].length);
-    if (refFails.length) h += `<p class="lede">A constraint that refers to another shape fails when the node it points at fails that shape; the reasons are listed under it.</p>`;
+    if (refFails.length) h += `<p class="lede">When a rule says "must be a valid X", the thing it points at is checked against the X rules in turn; the reasons it fails are listed underneath.</p>`;
   }
   $('why').innerHTML = h;
 }
@@ -753,7 +896,7 @@ function select(i) {
 const sel = $('preset');
 for (const [k, e] of Object.entries(examples)) { const o = document.createElement('option'); o.value = k; o.textContent = e.title; sel.appendChild(o); }
 sel.addEventListener('change', () => loadExample(sel.value));
-$('edit').addEventListener('click', () => $('editor').classList.toggle('hidden'));
+$('edit').addEventListener('click', () => { $('editor').classList.toggle('hidden'); if (!$('editor').classList.contains('hidden')) $('editor').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 $('apply').addEventListener('click', () => validate($('dataText').value));
 loadExample('people');
 window.__examples = examples; window.__glossFor = glossFor;
