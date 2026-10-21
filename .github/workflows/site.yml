@@ -1,0 +1,25 @@
+name: Check the demo site
+
+# GitHub Pages serves this repository from the main branch, folder /docs
+# (Settings > Pages). Nothing is published by this workflow. It checks that
+# the copy of the JavaScript mirror served next to docs/index.html is the
+# one under test in shapescore/js/, and that the mirror's tests pass.
+#
+# After changing shapescore/js/shapes-core.mjs, run:
+#     cp shapescore/js/shapes-core.mjs docs/shapes-core.mjs
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the mirror's tests
+        working-directory: shapescore/js
+        run: node --test
+      - name: docs/shapes-core.mjs is the tested copy
+        run: cmp shapescore/js/shapes-core.mjs docs/shapes-core.mjs
